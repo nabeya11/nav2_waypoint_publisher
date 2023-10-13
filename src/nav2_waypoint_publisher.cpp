@@ -86,7 +86,7 @@ bool WayPointPublisher::checkParameters(const std::vector<bool>& list)
 {
   bool pass = true;
 
-  for (int i = 0; i < list.size(); ++i)
+  for (size_t i = 0; i < list.size(); ++i)
   {
     if (!list[i])
     {
@@ -123,7 +123,7 @@ void WayPointPublisher::publishWaypointsFromCSV(std::string csv_file)
   origin_marker.id = 0;
   origin_marker.type = visualization_msgs::msg::Marker::ARROW;
   origin_marker.action = visualization_msgs::msg::Marker::ADD;
-  origin_marker.lifetime = rclcpp::Duration(0);  // forever
+  origin_marker.lifetime = rclcpp::Duration(0, 0);  // forever
   origin_marker.scale.x = waypoint_marker_scale_ * 1.5;
   origin_marker.scale.y = waypoint_marker_scale_;
   origin_marker.scale.z = waypoint_marker_scale_;
@@ -138,7 +138,7 @@ void WayPointPublisher::publishWaypointsFromCSV(std::string csv_file)
   origin_text_marker.id = 0;
   origin_text_marker.type = visualization_msgs::msg::Marker::TEXT_VIEW_FACING;
   origin_text_marker.action = visualization_msgs::msg::Marker::ADD;
-  origin_text_marker.lifetime = rclcpp::Duration(0);  // forever
+  origin_text_marker.lifetime = rclcpp::Duration(0, 0);  // forever
   origin_text_marker.scale.x = waypoint_text_marker_scale_;
   origin_text_marker.scale.y = waypoint_text_marker_scale_;
   origin_text_marker.scale.z = waypoint_text_marker_scale_;
