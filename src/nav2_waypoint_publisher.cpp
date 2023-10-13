@@ -82,11 +82,19 @@ void WayPointPublisher::getParams()
   }
 }
 
+geometry_msgs::msg::Quaternion rpyYawToQuat(double yaw){
+  tf2::Quaternion tf_quat;
+  geometry_msgs::msg::Quaternion msg_quat;
+  tf_quat.setRPY(0.0, 0.0 ,yaw);
+  msg_quat = tf2::toMsg(tf_quat);
+  return msg_quat;
+}
+
 bool WayPointPublisher::checkParameters(const std::vector<bool>& list)
 {
   bool pass = true;
 
-  for (int i = 0; i < list.size(); ++i)
+  for (size_t i = 0; i < list.size(); ++i)
   {
     if (!list[i])
     {
@@ -123,7 +131,7 @@ void WayPointPublisher::publishWaypointsFromCSV(std::string csv_file)
   origin_marker.id = 0;
   origin_marker.type = visualization_msgs::msg::Marker::ARROW;
   origin_marker.action = visualization_msgs::msg::Marker::ADD;
-  origin_marker.lifetime = rclcpp::Duration(0);  // forever
+  origin_marker.lifetime = rclcpp::Duration(0, 0);  // forever
   origin_marker.scale.x = waypoint_marker_scale_ * 1.5;
   origin_marker.scale.y = waypoint_marker_scale_;
   origin_marker.scale.z = waypoint_marker_scale_;
@@ -138,7 +146,7 @@ void WayPointPublisher::publishWaypointsFromCSV(std::string csv_file)
   origin_text_marker.id = 0;
   origin_text_marker.type = visualization_msgs::msg::Marker::TEXT_VIEW_FACING;
   origin_text_marker.action = visualization_msgs::msg::Marker::ADD;
-  origin_text_marker.lifetime = rclcpp::Duration(0);  // forever
+  origin_text_marker.lifetime = rclcpp::Duration(0, 0);  // forever
   origin_text_marker.scale.x = waypoint_text_marker_scale_;
   origin_text_marker.scale.y = waypoint_text_marker_scale_;
   origin_text_marker.scale.z = waypoint_text_marker_scale_;
@@ -162,39 +170,25 @@ void WayPointPublisher::publishWaypointsFromCSV(std::string csv_file)
 
     goal_msg.pose.position.x = std::stod(strvec.at(0));
     goal_msg.pose.position.y = std::stod(strvec.at(1));
-    goal_msg.pose.orientation.x = std::stod(strvec.at(3));
-    goal_msg.pose.orientation.y = std::stod(strvec.at(4));
-    goal_msg.pose.orientation.z = std::stod(strvec.at(5));
-    goal_msg.pose.orientation.w = std::stod(strvec.at(6));
+    goal_msg.pose.orientation = rpyYawToQuat(std::stod(strvec.at(2))/180*M_PI);
 
     marker.id = id_++;
     marker.pose.position.x = std::stod(strvec.at(0));
     marker.pose.position.y = std::stod(strvec.at(1));
-    marker.pose.position.z = std::stod(strvec.at(2));
-    marker.pose.orientation.x = std::stod(strvec.at(3));
-    marker.pose.orientation.y = std::stod(strvec.at(4));
-    marker.pose.orientation.z = std::stod(strvec.at(5));
-    marker.pose.orientation.w = std::stod(strvec.at(6));
+    marker.pose.orientation = rpyYawToQuat(std::stod(strvec.at(2))/180*M_PI);
 
     text_marker.id = id_;
     text_marker.text = std::to_string(id_);
     text_marker.pose.position.x = std::stod(strvec.at(0));
     text_marker.pose.position.y = std::stod(strvec.at(1));
-    text_marker.pose.position.z = std::stod(strvec.at(2));
-    text_marker.pose.orientation.x = std::stod(strvec.at(3));
-    text_marker.pose.orientation.y = std::stod(strvec.at(4));
-    text_marker.pose.orientation.z = std::stod(strvec.at(5));
-    text_marker.pose.orientation.w = std::stod(strvec.at(6));
+    text_marker.pose.orientation = rpyYawToQuat(std::stod(strvec.at(2))/180*M_PI);
 
     std::cout << "-------------------------------------" << std::endl;
     std::cout << "waypoint ID: " << marker.id << std::endl;
     std::cout << "trans x: " << std::stod(strvec.at(0)) << std::endl;
     std::cout << "trans y: " << std::stod(strvec.at(1)) << std::endl;
-    std::cout << "trans z: " << std::stod(strvec.at(2)) << std::endl;
-    std::cout << "rot x: " << std::stod(strvec.at(3)) << std::endl;
-    std::cout << "rot y: " << std::stod(strvec.at(4)) << std::endl;
-    std::cout << "rot z: " << std::stod(strvec.at(5)) << std::endl;
-    std::cout << "rot w: " << std::stod(strvec.at(6)) << std::endl;
+    std::cout << "rot yaw: " << std::stod(strvec.at(2)) << std::endl;
+
     if (follow_type_ == 0)
       nav_through_poses_goal.poses.push_back(goal_msg);
     else if (follow_type_ == 1)
