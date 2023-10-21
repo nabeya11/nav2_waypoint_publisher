@@ -18,8 +18,6 @@
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 #include <tf2/transform_datatypes.h>
 
-#include <chrono>
-
 class WayPointPublisher : public rclcpp::Node
 {
 public:
@@ -31,7 +29,6 @@ private:
   void declareParams();
   void getParams();
   bool checkParameters(const std::vector<bool>& list);
-  void PubTimerCallback();
 
 private:
   rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr waypoint_pub_;
@@ -43,9 +40,6 @@ private:
   rclcpp_action::ClientGoalHandle<nav2_msgs::action::NavigateThroughPoses>::SharedPtr nav_through_poses_goal_handle_;
   rclcpp_action::Client<nav2_msgs::action::FollowWaypoints>::SharedPtr follow_waypoints_action_client_;
   rclcpp_action::ClientGoalHandle<nav2_msgs::action::FollowWaypoints>::SharedPtr follow_waypoints_goal_handle_;
-
-  visualization_msgs::msg::MarkerArray marker_array_, text_marker_array_;
-
   int follow_type_;  // navigate_through_pose:0, follow_waypoints:1
   bool is_action_server_ready_;
   float waypoint_marker_scale_;
