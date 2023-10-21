@@ -118,11 +118,15 @@ std::vector<std::string> WayPointPublisher::getCSVLine(std::string& input, char 
   return result;
 }
 
+void WayPointPublisher::PubTimerCallback(){
+  waypoint_pub_->publish(marker_array_);
+  waypoint_text_pub_->publish(text_marker_array_);
+}
+
 void WayPointPublisher::publishWaypointsFromCSV(std::string csv_file)
 {
   std::ifstream ifs(csv_file);
   std::string line;
-  visualization_msgs::msg::MarkerArray marker_array, text_marker_array;
   visualization_msgs::msg::Marker origin_marker;
   visualization_msgs::msg::Marker origin_text_marker;
   origin_marker.header.frame_id = "map";
@@ -194,8 +198,8 @@ void WayPointPublisher::publishWaypointsFromCSV(std::string csv_file)
     else if (follow_type_ == 1)
       follow_waypoints_goal.poses.push_back(goal_msg);
 
-    marker_array.markers.push_back(marker);
-    text_marker_array.markers.push_back(text_marker);
+    marker_array_.markers.push_back(marker);
+    text_marker_array_.markers.push_back(text_marker);
   }
 
   // send goal
@@ -250,6 +254,6 @@ void WayPointPublisher::publishWaypointsFromCSV(std::string csv_file)
   }
 
   // Publish waypoints markers
-  waypoint_pub_->publish(marker_array);
-  waypoint_text_pub_->publish(text_marker_array);
+  auto timer1 = this->create_wall_timer(std::chrono::seconds(5),std::bind(&WayPointPublisher::PubTimerCallback, this));
+
 }
