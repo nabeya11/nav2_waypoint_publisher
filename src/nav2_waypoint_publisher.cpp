@@ -174,18 +174,18 @@ void WayPointPublisher::publishWaypointsFromCSV(std::string csv_file)
 
     goal_msg.pose.position.x = std::stod(strvec.at(0));
     goal_msg.pose.position.y = std::stod(strvec.at(1));
-    goal_msg.pose.orientation = rpyYawToQuat(std::stod(strvec.at(2))/180.0*M_PI);
+    goal_msg.pose.orientation = rpyYawToQuat(std::stod(strvec.at(2))/180*M_PI);
 
     marker.id = id_++;
     marker.pose.position.x = std::stod(strvec.at(0));
     marker.pose.position.y = std::stod(strvec.at(1));
-    marker.pose.orientation = rpyYawToQuat(std::stod(strvec.at(2))/180.0*M_PI);
+    marker.pose.orientation = rpyYawToQuat(std::stod(strvec.at(2))/180*M_PI);
 
     text_marker.id = id_;
     text_marker.text = std::to_string(id_);
     text_marker.pose.position.x = std::stod(strvec.at(0));
     text_marker.pose.position.y = std::stod(strvec.at(1));
-    text_marker.pose.orientation = rpyYawToQuat(std::stod(strvec.at(2))/180.0*M_PI);
+    text_marker.pose.orientation = rpyYawToQuat(std::stod(strvec.at(2))/180*M_PI);
 
     std::cout << "-------------------------------------" << std::endl;
     std::cout << "waypoint ID: " << marker.id << std::endl;
