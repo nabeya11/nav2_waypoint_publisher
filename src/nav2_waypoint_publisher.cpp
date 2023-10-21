@@ -71,7 +71,7 @@ void WayPointPublisher::getParams()
                                 GotWayPointMarkerColorG, GotWayPointMarkerColorB, GotWayPointMarkerColorA,
                                 GotWayPointTextMarkerScale, GotWayPointTextMarkerColorR, GotWayPointTextMarkerColorG,
                                 GotWayPointTextMarkerColorB, GotWayPointTextMarkerColorA });
-  if (pass)
+  if (!pass)
   {
     RCLCPP_WARN(get_logger(), "Could not get type paramters. Use default parameters");
   }
@@ -99,7 +99,7 @@ bool WayPointPublisher::checkParameters(const std::vector<bool>& list)
     if (!list[i])
     {
       pass = false;
-      std::cout << "didn't get i: " << i << " in the launch file" << std::endl;
+      RCLCPP_WARN_STREAM(get_logger(),"didn't get i: " << i << " in the launch file");
     }
   }
 
