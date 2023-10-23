@@ -34,6 +34,7 @@ WayPointPublisher::WayPointPublisher() : rclcpp::Node("nav2_waypoint_publisher")
       return;
     }
   }
+  RCLCPP_INFO(this->get_logger(),"start_index :%i",start_index);
   publishWaypointsFromCSV(csv_file_);
 }
 
@@ -41,6 +42,7 @@ void WayPointPublisher::declareParams()
 {
   follow_type_ = declare_parameter<int>("follow_type", 1);
   csv_file_ = declare_parameter<std::string>("csv_file", "sample.csv");
+  start_index = declare_parameter<int>("start_index", 1);
   waypoint_marker_scale_ = declare_parameter<float>("waypoint_marker_scale", 0.5);
   waypoint_marker_color_r_ = declare_parameter<float>("waypoint_marker_color_r", 1.0f);
   waypoint_marker_color_g_ = declare_parameter<float>("waypoint_marker_color_g", 0.0f);
@@ -57,6 +59,7 @@ void WayPointPublisher::getParams()
 {
   bool GotFllowType = this->get_parameter("follow_type", follow_type_);
   bool GotCSVFile = this->get_parameter("csv_file", csv_file_);
+  bool StartIndex = this->get_parameter("start_index", start_index);
   bool GotWayPointMarkerScale = this->get_parameter("waypoint_marker_scale", waypoint_marker_scale_);
   bool GotWayPointMarkerColorR = this->get_parameter("waypoint_marker_color_r", waypoint_marker_color_r_);
   bool GotWayPointMarkerColorG = this->get_parameter("waypoint_marker_color_g", waypoint_marker_color_g_);
@@ -67,7 +70,7 @@ void WayPointPublisher::getParams()
   bool GotWayPointTextMarkerColorG = this->get_parameter("waypoint_text_marker_color_g", waypoint_text_marker_color_g_);
   bool GotWayPointTextMarkerColorB = this->get_parameter("waypoint_text_marker_color_b", waypoint_text_marker_color_b_);
   bool GotWayPointTextMarkerColorA = this->get_parameter("waypoint_text_marker_color_a", waypoint_text_marker_color_a_);
-  bool pass = checkParameters({ GotFllowType, GotCSVFile, GotWayPointMarkerScale, GotWayPointMarkerColorR,
+  bool pass = checkParameters({ GotFllowType, GotCSVFile, StartIndex, GotWayPointMarkerColorR,
                                 GotWayPointMarkerColorG, GotWayPointMarkerColorB, GotWayPointMarkerColorA,
                                 GotWayPointTextMarkerScale, GotWayPointTextMarkerColorR, GotWayPointTextMarkerColorG,
                                 GotWayPointTextMarkerColorB, GotWayPointTextMarkerColorA });
@@ -165,41 +168,47 @@ void WayPointPublisher::publishWaypointsFromCSV(std::string csv_file)
   while (getline(ifs, line))
   {
     std::vector<std::string> strvec = getCSVLine(line, ',');
-    geometry_msgs::msg::PoseStamped goal_msg;
-    visualization_msgs::msg::Marker marker, text_marker;
-    marker = origin_marker;
-    text_marker = origin_text_marker;
-    goal_msg.header.stamp = this->now();
-    goal_msg.header.frame_id = "map";
 
-    goal_msg.pose.position.x = std::stod(strvec.at(0));
-    goal_msg.pose.position.y = std::stod(strvec.at(1));
-    goal_msg.pose.orientation = rpyYawToQuat(std::stod(strvec.at(2))/180.0*M_PI);
+    if(start_index <= id_+1){
+      geometry_msgs::msg::PoseStamped goal_msg;
+      visualization_msgs::msg::Marker marker, text_marker;
+      marker = origin_marker;
+      text_marker = origin_text_marker;
+      goal_msg.header.stamp = this->now();
+      goal_msg.header.frame_id = "map";
 
-    marker.id = id_++;
-    marker.pose.position.x = std::stod(strvec.at(0));
-    marker.pose.position.y = std::stod(strvec.at(1));
-    marker.pose.orientation = rpyYawToQuat(std::stod(strvec.at(2))/180.0*M_PI);
+      goal_msg.pose.position.x = std::stod(strvec.at(0));
+      goal_msg.pose.position.y = std::stod(strvec.at(1));
+      goal_msg.pose.orientation = rpyYawToQuat(std::stod(strvec.at(2))/180.0*M_PI);
 
-    text_marker.id = id_;
-    text_marker.text = std::to_string(id_);
-    text_marker.pose.position.x = std::stod(strvec.at(0));
-    text_marker.pose.position.y = std::stod(strvec.at(1));
-    text_marker.pose.orientation = rpyYawToQuat(std::stod(strvec.at(2))/180.0*M_PI);
+      id_ += 1;
+      //marker.id&text_marker.idは1~であることに注意．
+      //エディタの行番号が１から始まるのでそれに合わせてある．
+      marker.id = id_;    
+      marker.pose.position.x = std::stod(strvec.at(0));
+      marker.pose.position.y = std::stod(strvec.at(1));
+      marker.pose.orientation = rpyYawToQuat(std::stod(strvec.at(2))/180.0*M_PI);
 
-    std::cout << "-------------------------------------" << std::endl;
-    std::cout << "waypoint ID: " << marker.id << std::endl;
-    std::cout << "trans x: " << std::stod(strvec.at(0)) << std::endl;
-    std::cout << "trans y: " << std::stod(strvec.at(1)) << std::endl;
-    std::cout << "rot yaw: " << std::stod(strvec.at(2)) << std::endl;
+      text_marker.id = id_;
+      text_marker.text = std::to_string(id_);
+      text_marker.pose.position.x = std::stod(strvec.at(0));
+      text_marker.pose.position.y = std::stod(strvec.at(1));
+      text_marker.pose.orientation = rpyYawToQuat(std::stod(strvec.at(2))/180.0*M_PI);
 
-    if (follow_type_ == 0)
-      nav_through_poses_goal.poses.push_back(goal_msg);
-    else if (follow_type_ == 1)
-      follow_waypoints_goal.poses.push_back(goal_msg);
+      std::cout << "-------------------------------------" << std::endl;
+      std::cout << "waypoint ID: " << marker.id << std::endl;
+      std::cout << "trans x: " << std::stod(strvec.at(0)) << std::endl;
+      std::cout << "trans y: " << std::stod(strvec.at(1)) << std::endl;
+      std::cout << "rot yaw: " << std::stod(strvec.at(2)) << std::endl;
 
-    marker_array_.markers.push_back(marker);
-    text_marker_array_.markers.push_back(text_marker);
+      if (follow_type_ == 0)
+        nav_through_poses_goal.poses.push_back(goal_msg);
+      else if (follow_type_ == 1)
+        follow_waypoints_goal.poses.push_back(goal_msg);
+
+      marker_array_.markers.push_back(marker);
+      text_marker_array_.markers.push_back(text_marker);
+    }
   }
 
   // send goal
