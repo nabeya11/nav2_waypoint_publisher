@@ -74,7 +74,7 @@ void WayPointPublisher::getParams()
                                 GotWayPointMarkerColorG, GotWayPointMarkerColorB, GotWayPointMarkerColorA,
                                 GotWayPointTextMarkerScale, GotWayPointTextMarkerColorR, GotWayPointTextMarkerColorG,
                                 GotWayPointTextMarkerColorB, GotWayPointTextMarkerColorA });
-  if (pass)
+  if (!pass)
   {
     RCLCPP_WARN(get_logger(), "Could not get type paramters. Use default parameters");
   }
@@ -102,7 +102,7 @@ bool WayPointPublisher::checkParameters(const std::vector<bool>& list)
     if (!list[i])
     {
       pass = false;
-      std::cout << "didn't get i: " << i << " in the launch file" << std::endl;
+      RCLCPP_WARN_STREAM(get_logger(),"didn't get i: " << i << " in the launch file");
     }
   }
 
@@ -121,15 +121,11 @@ std::vector<std::string> WayPointPublisher::getCSVLine(std::string& input, char 
   return result;
 }
 
-void WayPointPublisher::PubTimerCallback(){
-  waypoint_pub_->publish(marker_array_);
-  waypoint_text_pub_->publish(text_marker_array_);
-}
-
 void WayPointPublisher::publishWaypointsFromCSV(std::string csv_file)
 {
   std::ifstream ifs(csv_file);
   std::string line;
+  visualization_msgs::msg::MarkerArray marker_array, text_marker_array;
   visualization_msgs::msg::Marker origin_marker;
   visualization_msgs::msg::Marker origin_text_marker;
   origin_marker.header.frame_id = "map";
@@ -169,6 +165,7 @@ void WayPointPublisher::publishWaypointsFromCSV(std::string csv_file)
   {
     std::vector<std::string> strvec = getCSVLine(line, ',');
 
+<<<<<<< HEAD
     if(start_index <= id_+1){
       geometry_msgs::msg::PoseStamped goal_msg;
       visualization_msgs::msg::Marker marker, text_marker;
@@ -188,6 +185,25 @@ void WayPointPublisher::publishWaypointsFromCSV(std::string csv_file)
       marker.pose.position.x = std::stod(strvec.at(0));
       marker.pose.position.y = std::stod(strvec.at(1));
       marker.pose.orientation = rpyYawToQuat(std::stod(strvec.at(2))/180.0*M_PI);
+=======
+    goal_msg.pose.position.x = std::stod(strvec.at(0));
+    goal_msg.pose.position.y = std::stod(strvec.at(1));
+    goal_msg.pose.position.z = 0.0;
+    goal_msg.pose.orientation = rpyYawToQuat(std::stod(strvec.at(2))/180.0*M_PI);
+
+    marker.id = id_++;
+    marker.pose.position.x = std::stod(strvec.at(0));
+    marker.pose.position.y = std::stod(strvec.at(1));
+    marker.pose.position.z = 0.0;
+    marker.pose.orientation = rpyYawToQuat(std::stod(strvec.at(2))/180.0*M_PI);
+
+    text_marker.id = id_;
+    text_marker.text = std::to_string(id_);
+    text_marker.pose.position.x = std::stod(strvec.at(0));
+    text_marker.pose.position.y = std::stod(strvec.at(1));
+    text_marker.pose.position.z = 0.0;
+    text_marker.pose.orientation = rpyYawToQuat(std::stod(strvec.at(2))/180.0*M_PI);
+>>>>>>> 3e9a72bf925179557eb430a4e4d9bf4a23003c62
 
       text_marker.id = id_;
       text_marker.text = std::to_string(id_);
@@ -201,6 +217,7 @@ void WayPointPublisher::publishWaypointsFromCSV(std::string csv_file)
       std::cout << "trans y: " << std::stod(strvec.at(1)) << std::endl;
       std::cout << "rot yaw: " << std::stod(strvec.at(2)) << std::endl;
 
+<<<<<<< HEAD
       if (follow_type_ == 0)
         nav_through_poses_goal.poses.push_back(goal_msg);
       else if (follow_type_ == 1)
@@ -209,6 +226,10 @@ void WayPointPublisher::publishWaypointsFromCSV(std::string csv_file)
       marker_array_.markers.push_back(marker);
       text_marker_array_.markers.push_back(text_marker);
     }
+=======
+    marker_array.markers.push_back(marker);
+    text_marker_array.markers.push_back(text_marker);
+>>>>>>> 3e9a72bf925179557eb430a4e4d9bf4a23003c62
   }
 
   // send goal
@@ -263,6 +284,6 @@ void WayPointPublisher::publishWaypointsFromCSV(std::string csv_file)
   }
 
   // Publish waypoints markers
-  auto timer1 = this->create_wall_timer(std::chrono::seconds(5),std::bind(&WayPointPublisher::PubTimerCallback, this));
-
+  waypoint_pub_->publish(marker_array);
+  waypoint_text_pub_->publish(text_marker_array);
 }
