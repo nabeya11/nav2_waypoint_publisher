@@ -12,7 +12,9 @@ WayPointPublisher::WayPointPublisher() : rclcpp::Node("nav2_waypoint_publisher")
   {
     nav_through_poses_action_client_ =
         rclcpp_action::create_client<nav2_msgs::action::NavigateThroughPoses>(this, "navigate_through_poses");
+    rclcpp::sleep_for(500ms);
     is_action_server_ready_ = nav_through_poses_action_client_->wait_for_action_server(std::chrono::seconds(5));
+
     if (!is_action_server_ready_)
     {
       RCLCPP_ERROR(this->get_logger(),
