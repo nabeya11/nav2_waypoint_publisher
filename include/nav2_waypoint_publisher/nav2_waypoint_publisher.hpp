@@ -42,7 +42,6 @@ private:
   rclcpp_action::ClientGoalHandle<nav2_msgs::action::FollowWaypoints>::SharedPtr follow_waypoints_goal_handle_;
   int follow_type_;  // navigate_through_pose:0, follow_waypoints:1
   bool is_action_server_ready_;
-  int start_index;
   float waypoint_marker_scale_;
   float waypoint_marker_color_r_;
   float waypoint_marker_color_g_;
