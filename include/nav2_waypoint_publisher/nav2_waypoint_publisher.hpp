@@ -24,6 +24,11 @@
 
 using namespace std::chrono_literals;
 
+typedef struct{
+  geometry_msgs::msg::Pose poses;
+  bool will_stop;
+}waypoint_info;
+
 class WayPointPublisher : public rclcpp::Node
 {
 public:
@@ -31,10 +36,13 @@ public:
 
 private:
   std::vector<std::string> getCSVLine(std::string& input, char delimiter);
-  void publishWaypointsFromCSV(std::string csv_file);
   void declareParams();
   void getParams();
   bool checkParameters(const std::vector<bool>& list);
+  void ReadWaypointsFromCSV(std::string& csv_file, std::vector<waypoint_info>& res_waypoints);
+  void PublishWaypointMarkers(const std::vector<waypoint_info> waypoints, long unsigned int start_index);
+  void SendWaypoints(const std::vector<waypoint_info> waypoints, long unsigned int start_index);
+  void NavThroughPosesGoalResponseCallback(const rclcpp_action::ClientGoalHandle<nav2_msgs::action::NavigateThroughPoses>::WrappedResult & result);
 
 private:
   rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr waypoint_pub_;
@@ -49,11 +57,16 @@ private:
   int follow_type_;  // navigate_through_pose:0, follow_waypoints:1
   int start_index_;
   bool is_action_server_ready_;
+  bool is_goal_achieved_;
   float waypoint_marker_scale_;
   float waypoint_marker_color_r_;
   float waypoint_marker_color_g_;
   float waypoint_marker_color_b_;
   float waypoint_marker_color_a_;
+  float waypoint_stop_marker_color_r_;
+  float waypoint_stop_marker_color_g_;
+  float waypoint_stop_marker_color_b_;
+  float waypoint_stop_marker_color_a_;
 
   float waypoint_text_marker_scale_;
   float waypoint_text_marker_color_r_;

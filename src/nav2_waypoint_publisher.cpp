@@ -2,6 +2,8 @@
 
 WayPointPublisher::WayPointPublisher() : rclcpp::Node("nav2_waypoint_publisher"), id_(0)
 {
+  std::vector<waypoint_info> waypoints;
+  long unsigned int start_index_long;
   declareParams();
   getParams();
   rclcpp::QoS latched_qos{ 1 };
@@ -28,7 +30,16 @@ WayPointPublisher::WayPointPublisher() : rclcpp::Node("nav2_waypoint_publisher")
                   " Is the initial pose set?");
     //return;
   }
-  publishWaypointsFromCSV(csv_file_);
+  
+  ReadWaypointsFromCSV(csv_file_, waypoints);
+  start_index_long = (long unsigned int)start_index_;
+  if(start_index_ < 1 || start_index_long > waypoints.size()){
+    RCLCPP_ERROR(get_logger(), "Invalid start_index");
+    return;
+  }
+
+  PublishWaypointMarkers(waypoints, start_index_long);
+  SendWaypoints(waypoints, start_index_long);
 }
 
 void WayPointPublisher::declareParams()
@@ -41,6 +52,10 @@ void WayPointPublisher::declareParams()
   waypoint_marker_color_g_ = declare_parameter<float>("waypoint_marker_color_g", 0.0f);
   waypoint_marker_color_b_ = declare_parameter<float>("waypoint_marker_color_b", 0.0f);
   waypoint_marker_color_a_ = declare_parameter<float>("waypoint_marker_color_a", 1.0f);
+  waypoint_stop_marker_color_r_ = declare_parameter<float>("waypoint_stop_marker_color_r", 1.0f);
+  waypoint_stop_marker_color_g_ = declare_parameter<float>("waypoint_stop_marker_color_g", 0.0f);
+  waypoint_stop_marker_color_b_ = declare_parameter<float>("waypoint_stop_marker_color_b", 0.0f);
+  waypoint_stop_marker_color_a_ = declare_parameter<float>("waypoint_stop_marker_color_a", 1.0f);
   waypoint_text_marker_scale_ = declare_parameter<float>("waypoint_text_marker_scale", 0.5);
   waypoint_text_marker_color_r_ = declare_parameter<float>("waypoint_text_marker_color_r", 1.0f);
   waypoint_text_marker_color_g_ = declare_parameter<float>("waypoint_text_marker_color_g", 0.0f);
@@ -58,13 +73,18 @@ void WayPointPublisher::getParams()
   bool GotWayPointMarkerColorG = this->get_parameter("waypoint_marker_color_g", waypoint_marker_color_g_);
   bool GotWayPointMarkerColorB = this->get_parameter("waypoint_marker_color_b", waypoint_marker_color_b_);
   bool GotWayPointMarkerColorA = this->get_parameter("waypoint_marker_color_a", waypoint_marker_color_a_);
+  bool GotWayPointStopMarkerColorR = this->get_parameter("waypoint_stop_marker_color_r", waypoint_stop_marker_color_r_);
+  bool GotWayPointStopMarkerColorG = this->get_parameter("waypoint_stop_marker_color_g", waypoint_stop_marker_color_g_);
+  bool GotWayPointStopMarkerColorB = this->get_parameter("waypoint_stop_marker_color_b", waypoint_stop_marker_color_b_);
+  bool GotWayPointStopMarkerColorA = this->get_parameter("waypoint_stop_marker_color_a", waypoint_stop_marker_color_a_);
   bool GotWayPointTextMarkerScale = this->get_parameter("waypoint_text_marker_scale", waypoint_text_marker_scale_);
   bool GotWayPointTextMarkerColorR = this->get_parameter("waypoint_text_marker_color_r", waypoint_text_marker_color_r_);
   bool GotWayPointTextMarkerColorG = this->get_parameter("waypoint_text_marker_color_g", waypoint_text_marker_color_g_);
   bool GotWayPointTextMarkerColorB = this->get_parameter("waypoint_text_marker_color_b", waypoint_text_marker_color_b_);
   bool GotWayPointTextMarkerColorA = this->get_parameter("waypoint_text_marker_color_a", waypoint_text_marker_color_a_);
   bool pass = checkParameters({ GotFllowType, GotCSVFile, GotWayPointMarkerScale, GotWayPointMarkerColorR,StartIndex,
-                                GotWayPointMarkerColorG, GotWayPointMarkerColorB, GotWayPointMarkerColorA,
+                                GotWayPointMarkerColorG, GotWayPointMarkerColorB, GotWayPointMarkerColorA,GotWayPointStopMarkerColorR,
+                                GotWayPointStopMarkerColorG,GotWayPointStopMarkerColorB,GotWayPointStopMarkerColorA,
                                 GotWayPointTextMarkerScale, GotWayPointTextMarkerColorR, GotWayPointTextMarkerColorG,
                                 GotWayPointTextMarkerColorB, GotWayPointTextMarkerColorA });
   if (!pass)
@@ -114,10 +134,34 @@ std::vector<std::string> WayPointPublisher::getCSVLine(std::string& input, char 
   return result;
 }
 
-void WayPointPublisher::publishWaypointsFromCSV(std::string csv_file)
-{
+void WayPointPublisher::ReadWaypointsFromCSV(std::string& csv_file, std::vector<waypoint_info>& waypoints){
   std::ifstream ifs(csv_file);
   std::string line;
+  waypoint_info waypoint;
+  int id = 0;
+  while (getline(ifs, line))
+  {
+    id++;
+    std::vector<std::string> strvec = getCSVLine(line, ',');
+    waypoint.poses.position.x = std::stod(strvec.at(0));
+    waypoint.poses.position.y = std::stod(strvec.at(1));
+    waypoint.poses.position.z = 0.0;
+    waypoint.poses.orientation = rpyYawToQuat(std::stod(strvec.at(2))/180.0*M_PI);
+    waypoint.will_stop = ("1"==strvec.at(5));
+
+    std::cout << "-------------------------------------" << std::endl;
+    std::cout << "waypoint ID: " << id << std::endl;
+    std::cout << "trans x: " << std::stod(strvec.at(0)) << std::endl;
+    std::cout << "trans y: " << std::stod(strvec.at(1)) << std::endl;
+    std::cout << "rot yaw: " << std::stod(strvec.at(2)) << std::endl;
+    std::cout << "will stop: "<< std::boolalpha <<  ("1"==strvec.at(5)) << std::endl;
+
+    waypoints.push_back(waypoint);
+  }
+}
+
+void WayPointPublisher::PublishWaypointMarkers(const std::vector<waypoint_info> waypoints, long unsigned int start_index){
+  long unsigned int i;
   visualization_msgs::msg::MarkerArray marker_array, text_marker_array;
   visualization_msgs::msg::Marker origin_marker;
   visualization_msgs::msg::Marker origin_text_marker;
@@ -151,107 +195,119 @@ void WayPointPublisher::publishWaypointsFromCSV(std::string csv_file)
   origin_text_marker.color.b = waypoint_text_marker_color_b_;
   origin_text_marker.color.a = waypoint_text_marker_color_a_;
 
-  nav2_msgs::action::NavigateThroughPoses::Goal nav_through_poses_goal;
-  nav2_msgs::action::FollowWaypoints::Goal follow_waypoints_goal;
+  for(i=start_index; i<waypoints.size(); i++){
+    visualization_msgs::msg::Marker marker, text_marker;
+    marker = origin_marker;
+    text_marker = origin_text_marker;
 
-  while (getline(ifs, line))
-  {
-    std::vector<std::string> strvec = getCSVLine(line, ',');
-    if(start_index_ < id_+2){
-      geometry_msgs::msg::PoseStamped goal_msg;
-      visualization_msgs::msg::Marker marker, text_marker;
-      marker = origin_marker;
-      text_marker = origin_text_marker;
-      goal_msg.header.stamp = this->now();
-      goal_msg.header.frame_id = "map";
-
-      goal_msg.pose.position.x = std::stod(strvec.at(0));
-      goal_msg.pose.position.y = std::stod(strvec.at(1));
-      goal_msg.pose.position.z = 0.0;
-      goal_msg.pose.orientation = rpyYawToQuat(std::stod(strvec.at(2))/180.0*M_PI);
-
-      id_ += 1;
-      marker.id = id_;
-      marker.pose.position.x = std::stod(strvec.at(0));
-      marker.pose.position.y = std::stod(strvec.at(1));
-      marker.pose.position.z = 0.0;
-      marker.pose.orientation = rpyYawToQuat(std::stod(strvec.at(2))/180.0*M_PI);
-
-      text_marker.id = id_;
-      text_marker.text = std::to_string(id_);
-      text_marker.pose.position.x = std::stod(strvec.at(0));
-      text_marker.pose.position.y = std::stod(strvec.at(1));
-      text_marker.pose.position.z = 0.0;
-      text_marker.pose.orientation = rpyYawToQuat(std::stod(strvec.at(2))/180.0*M_PI);
-
-      std::cout << "-------------------------------------" << std::endl;
-      std::cout << "waypoint ID: " << marker.id << std::endl;
-      std::cout << "trans x: " << std::stod(strvec.at(0)) << std::endl;
-      std::cout << "trans y: " << std::stod(strvec.at(1)) << std::endl;
-      std::cout << "rot yaw: " << std::stod(strvec.at(2)) << std::endl;
-
-      if (follow_type_ == 0)
-        nav_through_poses_goal.poses.push_back(goal_msg);
-      else if (follow_type_ == 1)
-        follow_waypoints_goal.poses.push_back(goal_msg);
-
-      marker_array.markers.push_back(marker);
-      text_marker_array.markers.push_back(text_marker);
+    if(waypoints[i-1].will_stop){  //止まるウェイポイントだったら色を変える
+      marker.color.r = waypoint_stop_marker_color_r_;
+      marker.color.g = waypoint_stop_marker_color_g_;
+      marker.color.b = waypoint_stop_marker_color_b_;
+      marker.color.a = waypoint_stop_marker_color_a_;
     }
-  }
 
-  // Publish waypoints markers
+    marker.id = i;
+    marker.pose = waypoints[i-1].poses;
+
+    text_marker.id = i;
+    text_marker.text = std::to_string(i);
+    text_marker.pose = waypoints[i-1].poses;
+
+    marker_array.markers.push_back(marker);
+    text_marker_array.markers.push_back(text_marker);
+  }
   waypoint_pub_->publish(marker_array);
   waypoint_text_pub_->publish(text_marker_array);
+}
 
-  // send goal
-  if (follow_type_ == THROUGH_POSES_MODE)
-  {
-    auto send_goal_options = rclcpp_action::Client<nav2_msgs::action::NavigateThroughPoses>::SendGoalOptions();
-    send_goal_options.result_callback = [this](auto) { nav_through_poses_goal_handle_.reset(); };
+void WayPointPublisher::SendWaypoints(const std::vector<waypoint_info> waypoints, long unsigned int start_index){
+  long unsigned int i =start_index-1;
+  while(i<waypoints.size()){
+    nav2_msgs::action::NavigateThroughPoses::Goal nav_through_poses_goal;
+    nav2_msgs::action::FollowWaypoints::Goal follow_waypoints_goal;
+    while(i<waypoints.size()){
+      geometry_msgs::msg::PoseStamped goal_msg;
+      goal_msg.header.stamp = this->now();
+      goal_msg.header.frame_id = "map";
+      goal_msg.pose=waypoints[i].poses;
+      nav_through_poses_goal.poses.push_back(goal_msg);
+      follow_waypoints_goal.poses.push_back(goal_msg);
+      if(follow_type_ == THROUGH_POSES_MODE && waypoints[i].will_stop)break;
+      i++;
+    }
+    // send goal
+    if (follow_type_ == THROUGH_POSES_MODE){
+      is_goal_achieved_ = false;
+      auto send_goal_options = rclcpp_action::Client<nav2_msgs::action::NavigateThroughPoses>::SendGoalOptions();
+      send_goal_options.result_callback = std::bind(&WayPointPublisher::NavThroughPosesGoalResponseCallback, this, std::placeholders::_1);
 
-    std::chrono::milliseconds server_timeout(30);
-    auto future_goal_handle =
-        nav_through_poses_action_client_->async_send_goal(nav_through_poses_goal, send_goal_options);
-    if (rclcpp::spin_until_future_complete(this->get_node_base_interface(), future_goal_handle, server_timeout) !=
-        rclcpp::FutureReturnCode::SUCCESS)
-    {
-      RCLCPP_ERROR(this->get_logger(), "Send goal call failed");
-      return;
+      std::chrono::milliseconds server_timeout(30);
+      auto future_goal_handle =
+          nav_through_poses_action_client_->async_send_goal(nav_through_poses_goal, send_goal_options);
+      if (rclcpp::spin_until_future_complete(this->get_node_base_interface(), future_goal_handle, server_timeout) !=
+          rclcpp::FutureReturnCode::SUCCESS)
+      {
+        RCLCPP_ERROR(this->get_logger(), "Send goal call failed");
+        return;
+      }
+      // Get the goal handle and save so that we can check on completion in the timer callback
+      nav_through_poses_goal_handle_ = future_goal_handle.get();
+      if (!nav_through_poses_goal_handle_)
+      {
+        RCLCPP_ERROR(this->get_logger(), "Goal was rejected by server");
+        return;
+      }
+      RCLCPP_INFO(this->get_logger(),
+                  "[nav_through_poses]: Sending a path of %zu waypoints:", nav_through_poses_goal.poses.size());
+      while(is_goal_achieved_);
     }
-    // Get the goal handle and save so that we can check on completion in the timer callback
-    nav_through_poses_goal_handle_ = future_goal_handle.get();
-    if (!nav_through_poses_goal_handle_)
+
+    if (follow_type_ == FOLLOW_WAYPOITNS_MODE)
     {
-      RCLCPP_ERROR(this->get_logger(), "Goal was rejected by server");
-      return;
+      auto send_goal_options = rclcpp_action::Client<nav2_msgs::action::FollowWaypoints>::SendGoalOptions();
+      send_goal_options.result_callback = [this](auto) { follow_waypoints_goal_handle_.reset(); };
+
+      std::chrono::milliseconds server_timeout(30);
+      auto future_goal_handle =
+          follow_waypoints_action_client_->async_send_goal(follow_waypoints_goal, send_goal_options);
+      if (rclcpp::spin_until_future_complete(this->get_node_base_interface(), future_goal_handle, server_timeout) !=
+          rclcpp::FutureReturnCode::SUCCESS)
+      {
+        RCLCPP_ERROR(this->get_logger(), "Send goal call failed");
+        return;
+      }
+      // Get the goal handle and save so that we can check on completion in the timer callback
+      follow_waypoints_goal_handle_ = future_goal_handle.get();
+      if (!follow_waypoints_goal_handle_)
+      {
+        RCLCPP_ERROR(this->get_logger(), "Goal was rejected by server");
+        return;
+      }
+      RCLCPP_INFO(this->get_logger(),
+                  "[follow_waypoints]: Sending a path of %zu waypoints:", follow_waypoints_goal.poses.size());
     }
-    RCLCPP_INFO(this->get_logger(),
-                "[nav_through_poses]: Sending a path of %zu waypoints:", nav_through_poses_goal.poses.size());
   }
-
-  if (follow_type_ == FOLLOW_WAYPOITNS_MODE)
+}
+void WayPointPublisher::NavThroughPosesGoalResponseCallback(const rclcpp_action::ClientGoalHandle<nav2_msgs::action::NavigateThroughPoses>::WrappedResult & result){
+  nav_through_poses_goal_handle_.reset();
+  switch (result.code)
   {
-    auto send_goal_options = rclcpp_action::Client<nav2_msgs::action::FollowWaypoints>::SendGoalOptions();
-    send_goal_options.result_callback = [this](auto) { follow_waypoints_goal_handle_.reset(); };
+    case rclcpp_action::ResultCode::SUCCEEDED:
+      RCLCPP_INFO(this->get_logger(), "Goal succeeded!");
+      is_goal_achieved_ = true;
+      break;
 
-    std::chrono::milliseconds server_timeout(30);
-    auto future_goal_handle =
-        follow_waypoints_action_client_->async_send_goal(follow_waypoints_goal, send_goal_options);
-    if (rclcpp::spin_until_future_complete(this->get_node_base_interface(), future_goal_handle, server_timeout) !=
-        rclcpp::FutureReturnCode::SUCCESS)
-    {
-      RCLCPP_ERROR(this->get_logger(), "Send goal call failed");
+    case rclcpp_action::ResultCode::ABORTED:
+      RCLCPP_ERROR(this->get_logger(), "Goal was aborted");
       return;
-    }
-    // Get the goal handle and save so that we can check on completion in the timer callback
-    follow_waypoints_goal_handle_ = future_goal_handle.get();
-    if (!follow_waypoints_goal_handle_)
-    {
-      RCLCPP_ERROR(this->get_logger(), "Goal was rejected by server");
+    
+    case rclcpp_action::ResultCode::CANCELED:
+      RCLCPP_ERROR(this->get_logger(), "Goal was canceled");
       return;
-    }
-    RCLCPP_INFO(this->get_logger(),
-                "[follow_waypoints]: Sending a path of %zu waypoints:", follow_waypoints_goal.poses.size());
+    
+    default:
+      RCLCPP_ERROR(this->get_logger(), "Unknown result code");
+      return;
   }
 }
