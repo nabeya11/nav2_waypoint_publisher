@@ -10,6 +10,7 @@ WayPointPublisher::WayPointPublisher() : rclcpp::Node("nav2_waypoint_publisher")
   latched_qos.transient_local();
   waypoint_pub_ = create_publisher<visualization_msgs::msg::MarkerArray>("waypoints", latched_qos);
   waypoint_text_pub_ = create_publisher<visualization_msgs::msg::MarkerArray>("waypoints_index", latched_qos);
+  joy_sub_ = create_subscription<sensor_msgs::msg::Joy>("/joy", 1, std::bind(&WayPointPublisher::JoyCallback, this, std::placeholders::_1));
 
   if (follow_type_ == THROUGH_POSES_MODE){
     nav_through_poses_action_client_ =
@@ -261,6 +262,10 @@ void WayPointPublisher::SendWaypoints(const std::vector<waypoint_info> waypoints
       RCLCPP_INFO(this->get_logger(),
                   "[nav_through_poses]: Sending a path of %zu waypoints:", nav_through_poses_goal.poses.size());
       while(is_goal_achieved_);
+      is_standby_ = false;
+      RCLCPP_INFO(this->get_logger(),"WaypointGoal is achieved.");
+      RCLCPP_INFO(this->get_logger(),"Waiting for the button to be pressed.");
+      while(!is_standby_);
     }
 
     if (follow_type_ == FOLLOW_WAYPOITNS_MODE)
@@ -309,5 +314,17 @@ void WayPointPublisher::NavThroughPosesGoalResponseCallback(const rclcpp_action:
     default:
       RCLCPP_ERROR(this->get_logger(), "Unknown result code");
       return;
+  }
+}
+void WayPointPublisher::JoyCallback(const sensor_msgs::msg::Joy &joy_msg){
+  static bool was_pushed = false; 
+  if (joy_msg.buttons[0] == 1){
+      if(!was_pushed){
+          RCLCPP_INFO(this->get_logger(), "standby_botton is pressed.");
+          was_pushed = true;
+          is_standby_ = true;
+      }
+  }else{
+      was_pushed = false;
   }
 }

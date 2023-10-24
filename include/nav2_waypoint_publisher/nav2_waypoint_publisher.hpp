@@ -14,6 +14,7 @@
 #include "nav2_msgs/action/follow_waypoints.hpp"
 #include <visualization_msgs/msg/marker.hpp>
 #include <visualization_msgs/msg/marker_array.hpp>
+#include <sensor_msgs/msg/joy.hpp>
 
 #include <tf2/utils.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
@@ -43,10 +44,12 @@ private:
   void PublishWaypointMarkers(const std::vector<waypoint_info> waypoints, long unsigned int start_index);
   void SendWaypoints(const std::vector<waypoint_info> waypoints, long unsigned int start_index);
   void NavThroughPosesGoalResponseCallback(const rclcpp_action::ClientGoalHandle<nav2_msgs::action::NavigateThroughPoses>::WrappedResult & result);
+  void JoyCallback(const sensor_msgs::msg::Joy &joy_msg);
 
 private:
   rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr waypoint_pub_;
   rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr waypoint_text_pub_;
+  rclcpp::Subscription<sensor_msgs::msg::Joy>::SharedPtr joy_sub_;
   // rclcpp::Clock ros_clock(RCL_ROS_TIME);
   int id_;
   std::string csv_file_;
@@ -58,6 +61,7 @@ private:
   int start_index_;
   bool is_action_server_ready_;
   bool is_goal_achieved_;
+  bool is_standby_;
   float waypoint_marker_scale_;
   float waypoint_marker_color_r_;
   float waypoint_marker_color_g_;
