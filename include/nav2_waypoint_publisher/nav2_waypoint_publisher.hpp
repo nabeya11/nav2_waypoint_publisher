@@ -19,8 +19,10 @@
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 #include <tf2/transform_datatypes.h>
 
-using namespace std::chrono_literals;
+#define FOLLOW_WAYPOITNS_MODE 1
+#define THROUGH_POSES_MODE 0
 
+using namespace std::chrono_literals;
 
 class WayPointPublisher : public rclcpp::Node
 {

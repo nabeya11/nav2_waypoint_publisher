@@ -8,40 +8,32 @@ WayPointPublisher::WayPointPublisher() : rclcpp::Node("nav2_waypoint_publisher")
   latched_qos.transient_local();
   waypoint_pub_ = create_publisher<visualization_msgs::msg::MarkerArray>("waypoints", latched_qos);
   waypoint_text_pub_ = create_publisher<visualization_msgs::msg::MarkerArray>("waypoints_index", latched_qos);
-  if (follow_type_ == 0)
-  {
+
+  if (follow_type_ == THROUGH_POSES_MODE){
     nav_through_poses_action_client_ =
         rclcpp_action::create_client<nav2_msgs::action::NavigateThroughPoses>(this, "navigate_through_poses");
     rclcpp::sleep_for(500ms);
     is_action_server_ready_ = nav_through_poses_action_client_->wait_for_action_server(std::chrono::seconds(5));
 
-    if (!is_action_server_ready_)
-    {
-      RCLCPP_ERROR(this->get_logger(),
-                   "navigate_through_poses action server is not available."
-                   " Is the initial pose set?");
-      return;
-    }
-  }
-  else if (follow_type_ == 1)
-  {
+  }else if (follow_type_ == FOLLOW_WAYPOITNS_MODE){
     follow_waypoints_action_client_ =
         rclcpp_action::create_client<nav2_msgs::action::FollowWaypoints>(this, "follow_waypoints");
+    rclcpp::sleep_for(500ms);
     is_action_server_ready_ = follow_waypoints_action_client_->wait_for_action_server(std::chrono::seconds(5));
-    if (!is_action_server_ready_)
-    {
-      RCLCPP_ERROR(this->get_logger(),
-                   "follow_waypoints action server is not available."
-                   " Is the initial pose set?");
-      return;
-    }
+  }
+
+  if (!is_action_server_ready_){
+    RCLCPP_ERROR(this->get_logger(),
+                  "follow_waypoints action server is not available."
+                  " Is the initial pose set?");
+    //return;
   }
   publishWaypointsFromCSV(csv_file_);
 }
 
 void WayPointPublisher::declareParams()
 {
-  follow_type_ = declare_parameter<int>("follow_type", 1);
+  follow_type_ = declare_parameter<int>("follow_type", FOLLOW_WAYPOITNS_MODE);
   start_index_ = declare_parameter<int>("start_index", 1);
   csv_file_ = declare_parameter<std::string>("csv_file", "sample.csv");
   waypoint_marker_scale_ = declare_parameter<float>("waypoint_marker_scale", 0.5);
@@ -79,7 +71,7 @@ void WayPointPublisher::getParams()
   {
     RCLCPP_WARN(get_logger(), "Could not get type paramters. Use default parameters");
   }
-  if (follow_type_ > 1 || follow_type_ < 0)
+  if (follow_type_ != FOLLOW_WAYPOITNS_MODE && follow_type_ != THROUGH_POSES_MODE)
   {
     RCLCPP_ERROR_STREAM(get_logger(),
                         "follow_type param has to be 0 or 1. Current the param value is " << follow_type_);
@@ -208,8 +200,12 @@ void WayPointPublisher::publishWaypointsFromCSV(std::string csv_file)
     }
   }
 
+  // Publish waypoints markers
+  waypoint_pub_->publish(marker_array);
+  waypoint_text_pub_->publish(text_marker_array);
+
   // send goal
-  if (follow_type_ == 0)
+  if (follow_type_ == THROUGH_POSES_MODE)
   {
     auto send_goal_options = rclcpp_action::Client<nav2_msgs::action::NavigateThroughPoses>::SendGoalOptions();
     send_goal_options.result_callback = [this](auto) { nav_through_poses_goal_handle_.reset(); };
@@ -234,7 +230,7 @@ void WayPointPublisher::publishWaypointsFromCSV(std::string csv_file)
                 "[nav_through_poses]: Sending a path of %zu waypoints:", nav_through_poses_goal.poses.size());
   }
 
-  if (follow_type_ == 1)
+  if (follow_type_ == FOLLOW_WAYPOITNS_MODE)
   {
     auto send_goal_options = rclcpp_action::Client<nav2_msgs::action::FollowWaypoints>::SendGoalOptions();
     send_goal_options.result_callback = [this](auto) { follow_waypoints_goal_handle_.reset(); };
@@ -258,8 +254,4 @@ void WayPointPublisher::publishWaypointsFromCSV(std::string csv_file)
     RCLCPP_INFO(this->get_logger(),
                 "[follow_waypoints]: Sending a path of %zu waypoints:", follow_waypoints_goal.poses.size());
   }
-
-  // Publish waypoints markers
-  waypoint_pub_->publish(marker_array);
-  waypoint_text_pub_->publish(text_marker_array);
 }

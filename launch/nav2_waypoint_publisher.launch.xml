@@ -2,8 +2,8 @@
 <launch>
         <!-- 0: navigate_through_pose, 1: follow_waypoints -->
         <arg name="follow_type" default="1" />
-        <arg name="start_index" default="1" />
-        <arg name="csv_file" default="/home/tsukutsuku/wp_ws/sb.csv" />
+        <arg name="start_index" default="2" />
+        <arg name="csv_file" default="/home/hoshizaki-s/waypointswaypoint2309222042.csv" />
         <arg name="waypoint_marker_scale" default="0.5" />
         <arg name="waypoint_marker_color_r" default="1.0" />
         <arg name="waypoint_marker_color_g" default="0.0" />
@@ -20,7 +20,7 @@
         <!-- map loader -->
         <node name="nav2_waypoint_publisher" pkg="nav2_waypoint_publisher" exec="nav2_waypoint_publisher" output="screen">
                 <param name="follow_type" value="$(var follow_type)" />
-                <param name="start_index" default="1" />
+                <param name="start_index" value="$(var start_index)" />
                 <param name="csv_file" value="$(var csv_file)" />
                 <param name="waypoint_marker_scale" value="$(var waypoint_marker_scale)" />
                 <param name="waypoint_marker_color_r" value="$(var waypoint_marker_color_r)" />
