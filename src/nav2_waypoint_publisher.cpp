@@ -4,7 +4,6 @@ WayPointPublisher::WayPointPublisher() : rclcpp::Node("nav2_waypoint_publisher")
 {
   declareParams();
   getParams();
-  std::cout << "param ok" << std::endl;
   rclcpp::QoS latched_qos{ 1 };
   latched_qos.transient_local();
   waypoint_pub_ = create_publisher<visualization_msgs::msg::MarkerArray>("waypoints", latched_qos);
@@ -12,7 +11,6 @@ WayPointPublisher::WayPointPublisher() : rclcpp::Node("nav2_waypoint_publisher")
   joy_sub_ = create_subscription<sensor_msgs::msg::Joy>("/joy", 1, std::bind(&WayPointPublisher::JoyCallback, this, std::placeholders::_1));
   std::string action_server_name;
 
-  std::cout << "pubsub setup ok" <<std::endl;
   if (follow_type_ == THROUGH_POSES_MODE){
     action_server_name = "navigate_through_poses";
     nav_through_poses_action_client_ =
@@ -31,9 +29,7 @@ WayPointPublisher::WayPointPublisher() : rclcpp::Node("nav2_waypoint_publisher")
   send_goal_options_.result_callback = std::bind(&WayPointPublisher::NavThroughPosesResultCallback, this, std::placeholders::_1);
   send_goal_options_.goal_response_callback = std::bind(&WayPointPublisher::NavThroughPosesGoalResponseCallback, this, std::placeholders::_1);
 
-  std::cout << "start csv read" << std::endl;
   ReadWaypointsFromCSV(csv_file_, waypoints_);
-  std::cout << "read ok" << std::endl;
   start_index_ = (size_t)start_index_int_;
   if(start_index_ < 1 || start_index_ > waypoints_.size()){
     RCLCPP_ERROR(get_logger(), "Invalid start_index");
@@ -41,10 +37,9 @@ WayPointPublisher::WayPointPublisher() : rclcpp::Node("nav2_waypoint_publisher")
   }
 
   PublishWaypointMarkers(waypoints_, start_index_);
-  std::cout << "pub ok" << std::endl;
   if (is_action_server_ready_){
      timer_ = create_wall_timer(100ms, std::bind(&WayPointPublisher::SendWaypointsTimerCallback, this));
-     std::cout << "timer set ok" << std::endl;
+
   }else{
     RCLCPP_ERROR(this->get_logger(),
                   "%s action server is not available."
@@ -310,23 +305,8 @@ size_t WayPointPublisher::SendWaypointsOnce(size_t sending_index){
     future_goal_handle_ = nav_through_poses_action_client_->async_send_goal(nav_through_poses_goal, send_goal_options_);
     RCLCPP_INFO(this->get_logger(),
               "[nav_through_poses]: Sending a path of %zu waypoints:", nav_through_poses_goal.poses.size());
-    // std::cout << "getmae" << std::endl;
-    // if (rclcpp::spin_until_future_complete(this, future_goal_handle, server_timeout) !=
-    //     rclcpp::FutureReturnCode::SUCCESS)
-    // {
-    //   RCLCPP_ERROR(this->get_logger(), "Send goal call failed");
-    //   //return;
-    // }
-    // // Get the goal handle and save so that we can check on completion in the timer callback
-    // nav_through_poses_goal_handle_ = future_goal_handle.get();
-    // std::cout << "get ato" << std::endl;
-    // if (!nav_through_poses_goal_handle_)
-    // {
-    //   RCLCPP_ERROR(this->get_logger(), "Goal was rejected by server");
-    // }
-    // RCLCPP_INFO(this->get_logger(),
-    //             "[nav_through_poses]: Sending a path of %zu waypoints:", nav_through_poses_goal.poses.size());
   }
+
   if (follow_type_ == FOLLOW_WAYPOITNS_MODE){
     auto send_goal_options = rclcpp_action::Client<nav2_msgs::action::FollowWaypoints>::SendGoalOptions();
     send_goal_options.result_callback = [this](auto) { follow_waypoints_goal_handle_.reset(); };
@@ -374,9 +354,7 @@ void WayPointPublisher::NavThroughPosesResultCallback(const rclcpp_action::Clien
   }
 }
 void WayPointPublisher::NavThroughPosesGoalResponseCallback(std::shared_ptr<rclcpp_action::ClientGoalHandle<nav2_msgs::action::NavigateThroughPoses>> future){
-  std::cout << "get mae" << std::endl;
   auto handle = future.get();
-  std::cout << "get ato" << std::endl;
   if (!handle)
   {
     RCLCPP_ERROR(this->get_logger(), "Goal was rejected by server");
@@ -389,7 +367,7 @@ void WayPointPublisher::JoyCallback(const sensor_msgs::msg::Joy &joy_msg){
   static bool was_pushed = false; 
   if (joy_msg.buttons[0] == 1){
       if(!was_pushed){
-          RCLCPP_INFO(this->get_logger(), "standby_botton is pressed.");
+          RCLCPP_INFO(this->get_logger(), "start_botton is pressed.");
           was_pushed = true;
           is_standby_ = true;
       }
