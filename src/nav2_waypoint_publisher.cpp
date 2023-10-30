@@ -6,33 +6,32 @@ WayPointPublisher::WayPointPublisher() : rclcpp::Node("nav2_waypoint_publisher")
   long unsigned int start_index_long;
   declareParams();
   getParams();
+  std::cout << "param ok" << std::endl;
   rclcpp::QoS latched_qos{ 1 };
   latched_qos.transient_local();
   waypoint_pub_ = create_publisher<visualization_msgs::msg::MarkerArray>("waypoints", latched_qos);
   waypoint_text_pub_ = create_publisher<visualization_msgs::msg::MarkerArray>("waypoints_index", latched_qos);
   joy_sub_ = create_subscription<sensor_msgs::msg::Joy>("/joy", 1, std::bind(&WayPointPublisher::JoyCallback, this, std::placeholders::_1));
+  std::string action_server_name;
 
+  std::cout << "pubsub setup ok" <<std::endl;
   if (follow_type_ == THROUGH_POSES_MODE){
+    action_server_name = "navigate_through_poses";
     nav_through_poses_action_client_ =
-        rclcpp_action::create_client<nav2_msgs::action::NavigateThroughPoses>(this, "navigate_through_poses");
+        rclcpp_action::create_client<nav2_msgs::action::NavigateThroughPoses>(this, action_server_name);
     rclcpp::sleep_for(500ms);
     is_action_server_ready_ = nav_through_poses_action_client_->wait_for_action_server(std::chrono::seconds(5));
 
   }else if (follow_type_ == FOLLOW_WAYPOITNS_MODE){
+    action_server_name = "follow_waypoints";
     follow_waypoints_action_client_ =
-        rclcpp_action::create_client<nav2_msgs::action::FollowWaypoints>(this, "follow_waypoints");
+        rclcpp_action::create_client<nav2_msgs::action::FollowWaypoints>(this, action_server_name);
     rclcpp::sleep_for(500ms);
     is_action_server_ready_ = follow_waypoints_action_client_->wait_for_action_server(std::chrono::seconds(5));
   }
-
-  if (!is_action_server_ready_){
-    RCLCPP_ERROR(this->get_logger(),
-                  "follow_waypoints action server is not available."
-                  " Is the initial pose set?");
-    //return;
-  }
-  
+  std::cout << "start csv read" << std::endl;
   ReadWaypointsFromCSV(csv_file_, waypoints);
+  std::cout << "read ok" << std::endl;
   start_index_long = (long unsigned int)start_index_;
   if(start_index_ < 1 || start_index_long > waypoints.size()){
     RCLCPP_ERROR(get_logger(), "Invalid start_index");
@@ -40,7 +39,17 @@ WayPointPublisher::WayPointPublisher() : rclcpp::Node("nav2_waypoint_publisher")
   }
 
   PublishWaypointMarkers(waypoints, start_index_long);
-  SendWaypoints(waypoints, start_index_long);
+  std::cout << "pub ok" << std::endl;
+  if (is_action_server_ready_){
+    SendWaypoints(waypoints, start_index_long); 
+  }else{
+    RCLCPP_ERROR(this->get_logger(),
+                  "%s action server is not available."
+                  " Is the initial pose set?"
+                  " SendWaypoints was not executed.",
+                  action_server_name.c_str());
+    return;
+  }
 }
 
 void WayPointPublisher::declareParams()
@@ -237,20 +246,21 @@ void WayPointPublisher::SendWaypoints(const std::vector<waypoint_info> waypoints
       if(follow_type_ == THROUGH_POSES_MODE && waypoints[i].will_stop)break;
       i++;
     }
+    i++;
     // send goal
     if (follow_type_ == THROUGH_POSES_MODE){
       is_goal_achieved_ = false;
       auto send_goal_options = rclcpp_action::Client<nav2_msgs::action::NavigateThroughPoses>::SendGoalOptions();
       send_goal_options.result_callback = std::bind(&WayPointPublisher::NavThroughPosesGoalResponseCallback, this, std::placeholders::_1);
 
-      std::chrono::milliseconds server_timeout(30);
+      std::chrono::milliseconds server_timeout(1000);
       auto future_goal_handle =
           nav_through_poses_action_client_->async_send_goal(nav_through_poses_goal, send_goal_options);
       if (rclcpp::spin_until_future_complete(this->get_node_base_interface(), future_goal_handle, server_timeout) !=
           rclcpp::FutureReturnCode::SUCCESS)
       {
         RCLCPP_ERROR(this->get_logger(), "Send goal call failed");
-        return;
+        //return;
       }
       // Get the goal handle and save so that we can check on completion in the timer callback
       nav_through_poses_goal_handle_ = future_goal_handle.get();
@@ -261,11 +271,21 @@ void WayPointPublisher::SendWaypoints(const std::vector<waypoint_info> waypoints
       }
       RCLCPP_INFO(this->get_logger(),
                   "[nav_through_poses]: Sending a path of %zu waypoints:", nav_through_poses_goal.poses.size());
-      while(is_goal_achieved_);
+      rclcpp::WallRate loop_rate(100ms);
+      while(rclcpp::ok()){
+        //RCLCPP_INFO(this->get_logger(),"waiting goal acheive.");
+        loop_rate.sleep();
+        if(is_goal_achieved_)break;
+      }
+      
       is_standby_ = false;
       RCLCPP_INFO(this->get_logger(),"WaypointGoal is achieved.");
       RCLCPP_INFO(this->get_logger(),"Waiting for the button to be pressed.");
-      while(!is_standby_);
+      while(rclcpp::ok()){
+        //RCLCPP_INFO(this->get_logger(),"waiting bottan");
+        loop_rate.sleep();
+        if(is_standby_)break;
+      }
     }
 
     if (follow_type_ == FOLLOW_WAYPOITNS_MODE)
@@ -273,14 +293,14 @@ void WayPointPublisher::SendWaypoints(const std::vector<waypoint_info> waypoints
       auto send_goal_options = rclcpp_action::Client<nav2_msgs::action::FollowWaypoints>::SendGoalOptions();
       send_goal_options.result_callback = [this](auto) { follow_waypoints_goal_handle_.reset(); };
 
-      std::chrono::milliseconds server_timeout(30);
+      std::chrono::milliseconds server_timeout(1000);
       auto future_goal_handle =
           follow_waypoints_action_client_->async_send_goal(follow_waypoints_goal, send_goal_options);
       if (rclcpp::spin_until_future_complete(this->get_node_base_interface(), future_goal_handle, server_timeout) !=
           rclcpp::FutureReturnCode::SUCCESS)
       {
         RCLCPP_ERROR(this->get_logger(), "Send goal call failed");
-        return;
+        //return;
       }
       // Get the goal handle and save so that we can check on completion in the timer callback
       follow_waypoints_goal_handle_ = future_goal_handle.get();
