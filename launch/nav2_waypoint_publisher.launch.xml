@@ -3,12 +3,16 @@
         <!-- 0: navigate_through_pose, 1: follow_waypoints -->
         <arg name="follow_type" default="1" />
         <arg name="start_index" default="2" />
-        <arg name="csv_file" default="/home/hoshizaki-s/waypointswaypoint2309222042.csv" />
+        <arg name="csv_file" default="/home/tsukutsuku/waypoints/tc/tc.csv"/>
         <arg name="waypoint_marker_scale" default="0.5" />
         <arg name="waypoint_marker_color_r" default="1.0" />
         <arg name="waypoint_marker_color_g" default="0.0" />
         <arg name="waypoint_marker_color_b" default="1.0" />
         <arg name="waypoint_marker_color_a" default="1.0" />
+        <arg name="waypoint_stop_marker_color_r" default="1.0" />
+        <arg name="waypoint_stop_marker_color_g" default="0.0" />
+        <arg name="waypoint_stop_marker_color_b" default="0.0" />
+        <arg name="waypoint_stop_marker_color_a" default="1.0" />
         <arg name="waypoint_text_marker_scale" default="0.75" />
         <arg name="waypoint_text_marker_color_r" default="1.0" />
         <arg name="waypoint_text_marker_color_g" default="1.0" />
@@ -27,6 +31,10 @@
                 <param name="waypoint_marker_color_g" value="$(var waypoint_marker_color_g)" />
                 <param name="waypoint_marker_color_b" value="$(var waypoint_marker_color_b)" />
                 <param name="waypoint_marker_color_a" value="$(var waypoint_marker_color_a)" />
+                <param name="waypoint_stop_marker_color_r" value="$(var waypoint_stop_marker_color_r)" />
+                <param name="waypoint_stop_marker_color_g" value="$(var waypoint_stop_marker_color_g)" />
+                <param name="waypoint_stop_marker_color_b" value="$(var waypoint_stop_marker_color_b)" />
+                <param name="waypoint_stop_marker_color_a" value="$(var waypoint_stop_marker_color_a)" />
                 <param name="waypoint_text_marker_scale" value="$(var waypoint_text_marker_scale)" />
                 <param name="waypoint_text_marker_color_r" value="$(var waypoint_text_marker_color_r)" />
                 <param name="waypoint_text_marker_color_g" value="$(var waypoint_text_marker_color_g)" />
