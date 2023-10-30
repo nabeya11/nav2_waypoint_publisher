@@ -48,7 +48,8 @@ private:
   bool checkParameters(const std::vector<bool>& list);
   void ReadWaypointsFromCSV(std::string& csv_file, std::vector<waypoint_info>& res_waypoints);
   void PublishWaypointMarkers(const std::vector<waypoint_info> waypoints, size_t start_index);
-  void NavThroughPosesGoalResponseCallback(const rclcpp_action::ClientGoalHandle<nav2_msgs::action::NavigateThroughPoses>::WrappedResult & result);
+  void NavThroughPosesResultCallback(const rclcpp_action::ClientGoalHandle<nav2_msgs::action::NavigateThroughPoses>::WrappedResult & result);
+  void NavThroughPosesGoalResponseCallback(const std::shared_ptr<rclcpp_action::ClientGoalHandle<nav2_msgs::action::NavigateThroughPoses>> future);
   void JoyCallback(const sensor_msgs::msg::Joy &joy_msg);
   void SendWaypointsTimerCallback();
   size_t SendWaypointsOnce(size_t sending_index);
@@ -76,6 +77,7 @@ private:
   bool is_action_server_ready_;
   bool is_goal_achieved_;
   bool is_standby_;
+  bool is_goal_accepted_;
   float waypoint_marker_scale_;
   float waypoint_marker_color_r_;
   float waypoint_marker_color_g_;

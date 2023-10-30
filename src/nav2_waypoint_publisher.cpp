@@ -28,7 +28,8 @@ WayPointPublisher::WayPointPublisher() : rclcpp::Node("nav2_waypoint_publisher")
     is_action_server_ready_ = follow_waypoints_action_client_->wait_for_action_server(std::chrono::seconds(5));
   }
   send_goal_options_ = rclcpp_action::Client<nav2_msgs::action::NavigateThroughPoses>::SendGoalOptions();
-  send_goal_options_.result_callback = std::bind(&WayPointPublisher::NavThroughPosesGoalResponseCallback, this, std::placeholders::_1);
+  send_goal_options_.result_callback = std::bind(&WayPointPublisher::NavThroughPosesResultCallback, this, std::placeholders::_1);
+  send_goal_options_.goal_response_callback = std::bind(&WayPointPublisher::NavThroughPosesGoalResponseCallback, this, std::placeholders::_1);
 
   std::cout << "start csv read" << std::endl;
   ReadWaypointsFromCSV(csv_file_, waypoints_);
@@ -237,8 +238,6 @@ void WayPointPublisher::SendWaypointsTimerCallback(){
   static size_t sending_index = start_index_ - 1;
   static int state = SEND_WAYPOINTS;
 
-  nav2_msgs::action::NavigateThroughPoses::Goal nav_through_poses_goal;
-  nav2_msgs::action::FollowWaypoints::Goal follow_waypoints_goal;
   switch (state)
   {
   case SEND_WAYPOINTS:
@@ -252,19 +251,10 @@ void WayPointPublisher::SendWaypointsTimerCallback(){
 
   case SEND_WAYPOINTS_CHECK:
       if(follow_type_ == THROUGH_POSES_MODE){
-        std::cout << "get mae" << std::endl;
-        nav_through_poses_goal_handle_ = future_goal_handle_.get();
-        std::cout << "get ato" << std::endl;
-        if (!nav_through_poses_goal_handle_)
-        {
-          RCLCPP_ERROR(this->get_logger(), "Goal was rejected by server");
-          timer_->cancel();
-          return ;
+        if(is_goal_accepted_){
+          state = WAITING_GOAL;
+          RCLCPP_INFO(this->get_logger(), "Waiting to acheive goal.");
         }
-        RCLCPP_INFO(this->get_logger(),
-                    "[nav_through_poses]: Sending a path of %zu waypoints:", nav_through_poses_goal.poses.size());
-        state = WAITING_GOAL;
-        RCLCPP_INFO(this->get_logger(), "Waiting to acheive goal.");
       }
 
       if(follow_type_ == FOLLOW_WAYPOITNS_MODE){
@@ -314,9 +304,12 @@ size_t WayPointPublisher::SendWaypointsOnce(size_t sending_index){
   next_index = i+1;
   if (follow_type_ == THROUGH_POSES_MODE){
     is_goal_achieved_ = false;
+    is_goal_accepted_ = false;
 
     std::chrono::milliseconds server_timeout(1000);
     future_goal_handle_ = nav_through_poses_action_client_->async_send_goal(nav_through_poses_goal, send_goal_options_);
+    RCLCPP_INFO(this->get_logger(),
+              "[nav_through_poses]: Sending a path of %zu waypoints:", nav_through_poses_goal.poses.size());
     // std::cout << "getmae" << std::endl;
     // if (rclcpp::spin_until_future_complete(this, future_goal_handle, server_timeout) !=
     //     rclcpp::FutureReturnCode::SUCCESS)
@@ -358,7 +351,7 @@ size_t WayPointPublisher::SendWaypointsOnce(size_t sending_index){
   }
   return next_index;
 }
-void WayPointPublisher::NavThroughPosesGoalResponseCallback(const rclcpp_action::ClientGoalHandle<nav2_msgs::action::NavigateThroughPoses>::WrappedResult & result){
+void WayPointPublisher::NavThroughPosesResultCallback(const rclcpp_action::ClientGoalHandle<nav2_msgs::action::NavigateThroughPoses>::WrappedResult & result){
   nav_through_poses_goal_handle_.reset();
   switch (result.code)
   {
@@ -379,6 +372,18 @@ void WayPointPublisher::NavThroughPosesGoalResponseCallback(const rclcpp_action:
       RCLCPP_ERROR(this->get_logger(), "Unknown result code");
       return;
   }
+}
+void WayPointPublisher::NavThroughPosesGoalResponseCallback(std::shared_ptr<rclcpp_action::ClientGoalHandle<nav2_msgs::action::NavigateThroughPoses>> future){
+  std::cout << "get mae" << std::endl;
+  auto handle = future.get();
+  std::cout << "get ato" << std::endl;
+  if (!handle)
+  {
+    RCLCPP_ERROR(this->get_logger(), "Goal was rejected by server");
+    timer_->cancel();
+    return ;
+  }
+  is_goal_accepted_ = true; 
 }
 void WayPointPublisher::JoyCallback(const sensor_msgs::msg::Joy &joy_msg){
   static bool was_pushed = false; 
