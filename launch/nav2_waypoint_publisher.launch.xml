@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <launch>
         <!-- 0: navigate_through_pose, 1: follow_waypoints -->
-        <arg name="follow_type" default="1" />
-        <arg name="start_index" default="2" />
+        <arg name="follow_type" default="0" />
+        <arg name="start_index" default="1" />
         <arg name="csv_file" default="/home/tsukutsuku/waypoints/tc/tc.csv"/>
         <arg name="waypoint_marker_scale" default="0.5" />
         <arg name="waypoint_marker_color_r" default="1.0" />
