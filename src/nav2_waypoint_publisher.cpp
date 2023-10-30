@@ -40,6 +40,7 @@ WayPointPublisher::WayPointPublisher() : rclcpp::Node("nav2_waypoint_publisher")
   std::cout << "pub ok" << std::endl;
   if (is_action_server_ready_){
      timer_ = create_wall_timer(100ms, std::bind(&WayPointPublisher::SendWaypointsTimerCallback, this));
+     std::cout << "timer set ok" << std::endl;
   }else{
     RCLCPP_ERROR(this->get_logger(),
                   "%s action server is not available."
@@ -157,12 +158,12 @@ void WayPointPublisher::ReadWaypointsFromCSV(std::string& csv_file, std::vector<
     waypoint.poses.orientation = rpyYawToQuat(std::stod(strvec.at(2))/180.0*M_PI);
     waypoint.will_stop = ("1"==strvec.at(5));
 
-    std::cout << "-------------------------------------" << std::endl;
-    std::cout << "waypoint ID: " << id << std::endl;
-    std::cout << "trans x: " << std::stod(strvec.at(0)) << std::endl;
-    std::cout << "trans y: " << std::stod(strvec.at(1)) << std::endl;
-    std::cout << "rot yaw: " << std::stod(strvec.at(2)) << std::endl;
-    std::cout << "will stop: "<< std::boolalpha <<  ("1"==strvec.at(5)) << std::endl;
+    // std::cout << "-------------------------------------" << std::endl;
+    // std::cout << "waypoint ID: " << id << std::endl;
+    // std::cout << "trans x: " << std::stod(strvec.at(0)) << std::endl;
+    // std::cout << "trans y: " << std::stod(strvec.at(1)) << std::endl;
+    // std::cout << "rot yaw: " << std::stod(strvec.at(2)) << std::endl;
+    // std::cout << "will stop: "<< std::boolalpha <<  ("1"==strvec.at(5)) << std::endl;
 
     waypoints.push_back(waypoint);
   }
@@ -228,6 +229,7 @@ void WayPointPublisher::PublishWaypointMarkers(const std::vector<waypoint_info> 
   waypoint_pub_->publish(marker_array);
   waypoint_text_pub_->publish(text_marker_array);
 }
+
 void WayPointPublisher::SendWaypointsTimerCallback(){
   static size_t sending_index = start_index_ - 1;
   static int state = SEND_WAYPOINTS;
@@ -299,7 +301,8 @@ size_t WayPointPublisher::SendWaypointsOnce(size_t sending_index){
     std::chrono::milliseconds server_timeout(1000);
     auto future_goal_handle =
         nav_through_poses_action_client_->async_send_goal(nav_through_poses_goal, send_goal_options);
-    if (rclcpp::spin_until_future_complete(this->get_node_base_interface(), future_goal_handle, server_timeout) !=
+    std::cout << "getmae" << std::endl;
+    if (rclcpp::spin_until_future_complete(this, future_goal_handle, server_timeout) !=
         rclcpp::FutureReturnCode::SUCCESS)
     {
       RCLCPP_ERROR(this->get_logger(), "Send goal call failed");
@@ -307,6 +310,7 @@ size_t WayPointPublisher::SendWaypointsOnce(size_t sending_index){
     }
     // Get the goal handle and save so that we can check on completion in the timer callback
     nav_through_poses_goal_handle_ = future_goal_handle.get();
+    std::cout << "get ato" << std::endl;
     if (!nav_through_poses_goal_handle_)
     {
       RCLCPP_ERROR(this->get_logger(), "Goal was rejected by server");
