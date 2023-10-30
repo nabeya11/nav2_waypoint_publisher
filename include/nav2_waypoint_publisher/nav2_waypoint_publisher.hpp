@@ -24,9 +24,10 @@
 #define THROUGH_POSES_MODE 0
 
 #define SEND_WAYPOINTS 0
-#define WAITING_GOAL 1
-#define WAITING_BUTTON 2
-#define FINISH_SENDING 3
+#define SEND_WAYPOINTS_CHECK 1
+#define WAITING_GOAL 2
+#define WAITING_BUTTON 3
+#define FINISH_SENDING 4
 
 using namespace std::chrono_literals;
 
@@ -64,6 +65,8 @@ private:
   rclcpp_action::ClientGoalHandle<nav2_msgs::action::NavigateThroughPoses>::SharedPtr nav_through_poses_goal_handle_;
   rclcpp_action::Client<nav2_msgs::action::FollowWaypoints>::SharedPtr follow_waypoints_action_client_;
   rclcpp_action::ClientGoalHandle<nav2_msgs::action::FollowWaypoints>::SharedPtr follow_waypoints_goal_handle_;
+  rclcpp_action::Client<nav2_msgs::action::NavigateThroughPoses>::SendGoalOptions send_goal_options_;
+  std::shared_future<std::shared_ptr<rclcpp_action::ClientGoalHandle<nav2_msgs::action::NavigateThroughPoses>>> future_goal_handle_;
 
   std::vector<waypoint_info> waypoints_;
   size_t start_index_;

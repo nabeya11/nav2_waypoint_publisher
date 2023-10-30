@@ -27,6 +27,9 @@ WayPointPublisher::WayPointPublisher() : rclcpp::Node("nav2_waypoint_publisher")
     rclcpp::sleep_for(500ms);
     is_action_server_ready_ = follow_waypoints_action_client_->wait_for_action_server(std::chrono::seconds(5));
   }
+  send_goal_options_ = rclcpp_action::Client<nav2_msgs::action::NavigateThroughPoses>::SendGoalOptions();
+  send_goal_options_.result_callback = std::bind(&WayPointPublisher::NavThroughPosesGoalResponseCallback, this, std::placeholders::_1);
+
   std::cout << "start csv read" << std::endl;
   ReadWaypointsFromCSV(csv_file_, waypoints_);
   std::cout << "read ok" << std::endl;
@@ -241,18 +244,34 @@ void WayPointPublisher::SendWaypointsTimerCallback(){
   case SEND_WAYPOINTS:
     if(sending_index < waypoints_.size()){
       sending_index =  SendWaypointsOnce(sending_index);
-      if(follow_type_ == THROUGH_POSES_MODE){
-        state = WAITING_GOAL;
-        RCLCPP_INFO(this->get_logger(), "Waiting to acheive goal.");
-      }
-      if(follow_type_ == FOLLOW_WAYPOITNS_MODE){
-        state = FINISH_SENDING;
-      }
+      state = SEND_WAYPOINTS_CHECK;
     }else{
       state = FINISH_SENDING;
     }
     break;
-  
+
+  case SEND_WAYPOINTS_CHECK:
+      if(follow_type_ == THROUGH_POSES_MODE){
+        std::cout << "get mae" << std::endl;
+        nav_through_poses_goal_handle_ = future_goal_handle_.get();
+        std::cout << "get ato" << std::endl;
+        if (!nav_through_poses_goal_handle_)
+        {
+          RCLCPP_ERROR(this->get_logger(), "Goal was rejected by server");
+          timer_->cancel();
+          return ;
+        }
+        RCLCPP_INFO(this->get_logger(),
+                    "[nav_through_poses]: Sending a path of %zu waypoints:", nav_through_poses_goal.poses.size());
+        state = WAITING_GOAL;
+        RCLCPP_INFO(this->get_logger(), "Waiting to acheive goal.");
+      }
+
+      if(follow_type_ == FOLLOW_WAYPOITNS_MODE){
+        state = FINISH_SENDING;
+      }
+    break;
+
   case WAITING_GOAL:
     if(is_goal_achieved_){
       is_standby_ = false;
@@ -295,28 +314,25 @@ size_t WayPointPublisher::SendWaypointsOnce(size_t sending_index){
   next_index = i+1;
   if (follow_type_ == THROUGH_POSES_MODE){
     is_goal_achieved_ = false;
-    auto send_goal_options = rclcpp_action::Client<nav2_msgs::action::NavigateThroughPoses>::SendGoalOptions();
-    send_goal_options.result_callback = std::bind(&WayPointPublisher::NavThroughPosesGoalResponseCallback, this, std::placeholders::_1);
 
     std::chrono::milliseconds server_timeout(1000);
-    auto future_goal_handle =
-        nav_through_poses_action_client_->async_send_goal(nav_through_poses_goal, send_goal_options);
-    std::cout << "getmae" << std::endl;
-    if (rclcpp::spin_until_future_complete(this, future_goal_handle, server_timeout) !=
-        rclcpp::FutureReturnCode::SUCCESS)
-    {
-      RCLCPP_ERROR(this->get_logger(), "Send goal call failed");
-      //return;
-    }
-    // Get the goal handle and save so that we can check on completion in the timer callback
-    nav_through_poses_goal_handle_ = future_goal_handle.get();
-    std::cout << "get ato" << std::endl;
-    if (!nav_through_poses_goal_handle_)
-    {
-      RCLCPP_ERROR(this->get_logger(), "Goal was rejected by server");
-    }
-    RCLCPP_INFO(this->get_logger(),
-                "[nav_through_poses]: Sending a path of %zu waypoints:", nav_through_poses_goal.poses.size());
+    future_goal_handle_ = nav_through_poses_action_client_->async_send_goal(nav_through_poses_goal, send_goal_options_);
+    // std::cout << "getmae" << std::endl;
+    // if (rclcpp::spin_until_future_complete(this, future_goal_handle, server_timeout) !=
+    //     rclcpp::FutureReturnCode::SUCCESS)
+    // {
+    //   RCLCPP_ERROR(this->get_logger(), "Send goal call failed");
+    //   //return;
+    // }
+    // // Get the goal handle and save so that we can check on completion in the timer callback
+    // nav_through_poses_goal_handle_ = future_goal_handle.get();
+    // std::cout << "get ato" << std::endl;
+    // if (!nav_through_poses_goal_handle_)
+    // {
+    //   RCLCPP_ERROR(this->get_logger(), "Goal was rejected by server");
+    // }
+    // RCLCPP_INFO(this->get_logger(),
+    //             "[nav_through_poses]: Sending a path of %zu waypoints:", nav_through_poses_goal.poses.size());
   }
   if (follow_type_ == FOLLOW_WAYPOITNS_MODE){
     auto send_goal_options = rclcpp_action::Client<nav2_msgs::action::FollowWaypoints>::SendGoalOptions();
