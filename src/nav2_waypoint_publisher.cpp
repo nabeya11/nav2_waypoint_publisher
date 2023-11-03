@@ -26,6 +26,7 @@ WayPointPublisher::WayPointPublisher() : rclcpp::Node("nav2_waypoint_publisher")
     is_action_server_ready_ = follow_waypoints_action_client_->wait_for_action_server(std::chrono::seconds(5));
   }
   send_goal_options_ = rclcpp_action::Client<nav2_msgs::action::NavigateThroughPoses>::SendGoalOptions();
+  send_goal_options_.feedback_callback = std::bind(&WayPointPublisher::NavThroughPosesFeedbackCallback, this, std::placeholders::_1, std::placeholders::_2);
   send_goal_options_.result_callback = std::bind(&WayPointPublisher::NavThroughPosesResultCallback, this, std::placeholders::_1);
   send_goal_options_.goal_response_callback = std::bind(&WayPointPublisher::NavThroughPosesGoalResponseCallback, this, std::placeholders::_1);
 
@@ -263,6 +264,11 @@ void WayPointPublisher::SendWaypointsTimerCallback(){
       state = WAITING_BUTTON;
       RCLCPP_INFO(this->get_logger(), "Waiting start botton.");
     }
+    if(is_aborted_){
+      sending_index = sending_index - (size_t)number_of_poses_reaining_ + 1;
+      RCLCPP_INFO(this->get_logger(), "restarting...index:%zu",sending_index);
+      state = SEND_WAYPOINTS;
+    }
     break;
   
   case WAITING_BUTTON:
@@ -300,6 +306,7 @@ size_t WayPointPublisher::SendWaypointsOnce(size_t sending_index){
   if (follow_type_ == THROUGH_POSES_MODE){
     is_goal_achieved_ = false;
     is_goal_accepted_ = false;
+    is_aborted_ = false;
 
     std::chrono::milliseconds server_timeout(1000);
     future_goal_handle_ = nav_through_poses_action_client_->async_send_goal(nav_through_poses_goal, send_goal_options_);
@@ -342,6 +349,7 @@ void WayPointPublisher::NavThroughPosesResultCallback(const rclcpp_action::Clien
 
     case rclcpp_action::ResultCode::ABORTED:
       RCLCPP_ERROR(this->get_logger(), "Goal was aborted");
+      is_aborted_ = true;
       return;
     
     case rclcpp_action::ResultCode::CANCELED:
@@ -362,6 +370,10 @@ void WayPointPublisher::NavThroughPosesGoalResponseCallback(std::shared_ptr<rclc
     return ;
   }
   is_goal_accepted_ = true; 
+}
+void WayPointPublisher::NavThroughPosesFeedbackCallback(const GoalHandleNavigateNavigateThroughPoses::SharedPtr, const std::shared_ptr<const NavigateThroughPoses::Feedback> feedback){
+  number_of_poses_reaining_ = feedback->number_of_poses_remaining;
+  //RCLCPP_INFO(get_logger(), "number of poses remaining = %zu", (size_t)feedback->number_of_poses_remaining);
 }
 void WayPointPublisher::JoyCallback(const sensor_msgs::msg::Joy &joy_msg){
   static bool was_pushed = false; 

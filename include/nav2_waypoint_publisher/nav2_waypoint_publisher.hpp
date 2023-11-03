@@ -12,6 +12,8 @@
 #include "rclcpp_action/rclcpp_action.hpp"
 #include "nav2_msgs/action/navigate_through_poses.hpp"
 #include "nav2_msgs/action/follow_waypoints.hpp"
+#include "nav2_msgs/action/navigate_to_pose.hpp"
+
 #include <visualization_msgs/msg/marker.hpp>
 #include <visualization_msgs/msg/marker_array.hpp>
 #include <sensor_msgs/msg/joy.hpp>
@@ -39,6 +41,8 @@ typedef struct{
 class WayPointPublisher : public rclcpp::Node
 {
 public:
+  using NavigateThroughPoses = nav2_msgs::action::NavigateThroughPoses;
+  using GoalHandleNavigateNavigateThroughPoses = rclcpp_action::ClientGoalHandle<NavigateThroughPoses>;
   WayPointPublisher();
 
 private:
@@ -48,6 +52,7 @@ private:
   bool checkParameters(const std::vector<bool>& list);
   void ReadWaypointsFromCSV(std::string& csv_file, std::vector<waypoint_info>& res_waypoints);
   void PublishWaypointMarkers(const std::vector<waypoint_info> waypoints, size_t start_index);
+  void NavThroughPosesFeedbackCallback(const GoalHandleNavigateNavigateThroughPoses::SharedPtr,const std::shared_ptr<const NavigateThroughPoses::Feedback> feedback);
   void NavThroughPosesResultCallback(const rclcpp_action::ClientGoalHandle<nav2_msgs::action::NavigateThroughPoses>::WrappedResult & result);
   void NavThroughPosesGoalResponseCallback(const std::shared_ptr<rclcpp_action::ClientGoalHandle<nav2_msgs::action::NavigateThroughPoses>> future);
   void JoyCallback(const sensor_msgs::msg::Joy &joy_msg);
@@ -76,6 +81,7 @@ private:
   int start_index_int_;
   bool is_action_server_ready_;
   bool is_goal_achieved_;
+  bool is_aborted_;
   bool is_standby_;
   bool is_goal_accepted_;
   float waypoint_marker_scale_;
@@ -93,6 +99,7 @@ private:
   float waypoint_text_marker_color_g_;
   float waypoint_text_marker_color_b_;
   float waypoint_text_marker_color_a_;
+  int16_t number_of_poses_reaining_;
 };
 
 #endif
