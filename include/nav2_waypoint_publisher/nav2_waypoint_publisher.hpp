@@ -99,7 +99,7 @@ private:
   float waypoint_text_marker_color_g_;
   float waypoint_text_marker_color_b_;
   float waypoint_text_marker_color_a_;
-  int16_t number_of_poses_reaining_;
+  int16_t number_of_poses_remaining_;
 };
 
 #endif

@@ -265,7 +265,7 @@ void WayPointPublisher::SendWaypointsTimerCallback(){
       RCLCPP_INFO(this->get_logger(), "Waiting start botton.");
     }
     if(is_aborted_){
-      sending_index = sending_index - (size_t)number_of_poses_reaining_ + 1;
+      sending_index = sending_index - (size_t)number_of_poses_remaining_;
       RCLCPP_INFO(this->get_logger(), "restarting...index:%zu",sending_index);
       state = SEND_WAYPOINTS;
     }
@@ -372,7 +372,7 @@ void WayPointPublisher::NavThroughPosesGoalResponseCallback(std::shared_ptr<rclc
   is_goal_accepted_ = true; 
 }
 void WayPointPublisher::NavThroughPosesFeedbackCallback(const GoalHandleNavigateNavigateThroughPoses::SharedPtr, const std::shared_ptr<const NavigateThroughPoses::Feedback> feedback){
-  number_of_poses_reaining_ = feedback->number_of_poses_remaining;
+  number_of_poses_remaining_ = feedback->number_of_poses_remaining;
   //RCLCPP_INFO(get_logger(), "number of poses remaining = %zu", (size_t)feedback->number_of_poses_remaining);
 }
 void WayPointPublisher::JoyCallback(const sensor_msgs::msg::Joy &joy_msg){
