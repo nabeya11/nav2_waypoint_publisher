@@ -265,7 +265,7 @@ void WayPointPublisher::SendWaypointsTimerCallback(){
       RCLCPP_INFO(this->get_logger(), "Waiting start botton.");
     }
     if(is_aborted_){
-      sending_index = sending_index - (size_t)number_of_poses_remaining_;
+      sending_index = sending_index - (size_t)number_of_poses_remaining_ -1;
       RCLCPP_INFO(this->get_logger(), "restarting...index:%zu",sending_index);
       state = SEND_WAYPOINTS;
     }
