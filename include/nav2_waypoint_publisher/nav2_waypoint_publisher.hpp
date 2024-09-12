@@ -13,6 +13,7 @@
 #include "nav2_msgs/action/navigate_through_poses.hpp"
 #include "nav2_msgs/action/follow_waypoints.hpp"
 #include "nav2_msgs/action/navigate_to_pose.hpp"
+#include "waypoints_msgs/msg/waypoints.hpp"
 
 #include <visualization_msgs/msg/marker.hpp>
 #include <visualization_msgs/msg/marker_array.hpp>
