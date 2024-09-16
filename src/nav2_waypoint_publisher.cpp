@@ -146,7 +146,7 @@ void WayPointPublisher::PublishWaypointMarkers(){
   origin_text_marker.color.b = waypoint_text_marker_color_b_;
   origin_text_marker.color.a = waypoint_text_marker_color_a_;
 
-  for(i=0; i<waypoints_.size()+1; i++){
+  for(i=1; i<waypoints_.size()+1; i++){
     visualization_msgs::msg::Marker marker, text_marker;
     marker = origin_marker;
     text_marker = origin_text_marker;
@@ -173,7 +173,7 @@ void WayPointPublisher::PublishWaypointMarkers(){
 }
 
 void WayPointPublisher::SendWaypointsTimerCallback(){
-  static int state = SEND_WAYPOINTS;
+  static int state = STANBY;
   static uint8_t feedback_state = FEEDBACK_STANBY;
   tsukutsuku2_msgs::msg::StateAndFeedback feedback_state_msg;
   feedback_state_msg.state = latest_waypoint_state_;
