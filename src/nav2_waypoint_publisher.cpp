@@ -8,7 +8,7 @@ WayPointPublisher::WayPointPublisher() : rclcpp::Node("nav2_waypoint_publisher")
   latched_qos.transient_local();
   waypoint_marker_pub_ = create_publisher<visualization_msgs::msg::MarkerArray>("waypoints_marker", latched_qos);
   waypoint_text_pub_ = create_publisher<visualization_msgs::msg::MarkerArray>("waypoints_maker_index", latched_qos);
-  waypoints_sub_ = create_subscription<waypoints_msgs::msg::Waypoints>("/waypoints", 1, std::bind(&WayPointPublisher::WaypointsSubCallback, this, std::placeholders::_1));
+  waypoints_sub_ = create_subscription<tsukutsuku2_msgs::msg::Waypoints>("/waypoints", 1, std::bind(&WayPointPublisher::WaypointsSubCallback, this, std::placeholders::_1));
   std::string action_server_name;
 
   action_server_name = "navigate_through_poses";
@@ -304,7 +304,7 @@ void WayPointPublisher::NavThroughPosesFeedbackCallback(const GoalHandleNavigate
   number_of_poses_remaining_ = feedback->number_of_poses_remaining;
   //RCLCPP_INFO(get_logger(), "number of poses remaining = %zu", (size_t)feedback->number_of_poses_remaining);
 }
-void WayPointPublisher::WaypointsSubCallback(const waypoints_msgs::msg::Waypoints::SharedPtr waypoints_msg){
+void WayPointPublisher::WaypointsSubCallback(const tsukutsuku2_msgs::msg::Waypoints::SharedPtr waypoints_msg){
   waypoints_ = waypoints_msg->waypoints;
   is_waypoints_updated_ = true;
 }

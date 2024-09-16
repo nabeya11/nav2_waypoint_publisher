@@ -13,7 +13,7 @@
 #include "nav2_msgs/action/navigate_through_poses.hpp"
 #include "nav2_msgs/action/follow_waypoints.hpp"
 #include "nav2_msgs/action/navigate_to_pose.hpp"
-#include "waypoints_msgs/msg/waypoints.hpp"
+#include "tsukutsuku2_msgs/msg/waypoints.hpp"
 
 #include <visualization_msgs/msg/marker.hpp>
 #include <visualization_msgs/msg/marker_array.hpp>
@@ -58,13 +58,13 @@ private:
   void SendWaypointsTimerCallback();
   void SendWaypointsOnce();
   void CancelTask();
-  void WaypointsSubCallback(const waypoints_msgs::msg::Waypoints::SharedPtr waypoints);
+  void WaypointsSubCallback(const tsukutsuku2_msgs::msg::Waypoints::SharedPtr waypoints);
   void PublishWaypointMarkers();
 
 private:
   rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr waypoint_marker_pub_;
   rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr waypoint_text_pub_;
-  rclcpp::Subscription<waypoints_msgs::msg::Waypoints>::SharedPtr waypoints_sub_;
+  rclcpp::Subscription<tsukutsuku2_msgs::msg::Waypoints>::SharedPtr waypoints_sub_;
   rclcpp::TimerBase::SharedPtr timer_;
   // rclcpp::Clock ros_clock(RCL_ROS_TIME);
   int id_;
@@ -73,7 +73,7 @@ private:
   rclcpp_action::Client<nav2_msgs::action::NavigateThroughPoses>::SendGoalOptions send_goal_options_;
   std::shared_future<std::shared_ptr<rclcpp_action::ClientGoalHandle<nav2_msgs::action::NavigateThroughPoses>>> future_goal_handle_;
 
-  std::vector<waypoints_msgs::msg::Waypoint> waypoints_;
+  std::vector<tsukutsuku2_msgs::msg::Waypoint> waypoints_;
 
   bool is_action_server_ready_;
   bool is_goal_achieved_;
