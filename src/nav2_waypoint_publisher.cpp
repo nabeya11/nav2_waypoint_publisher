@@ -8,6 +8,7 @@ WayPointPublisher::WayPointPublisher() : rclcpp::Node("nav2_waypoint_publisher")
   latched_qos.transient_local();
   waypoint_marker_pub_ = create_publisher<visualization_msgs::msg::MarkerArray>("waypoints_marker", latched_qos);
   waypoint_text_pub_ = create_publisher<visualization_msgs::msg::MarkerArray>("waypoints_maker_index", latched_qos);
+  waypoint_state_pub_ = create_publisher<tsukutsuku2_msgs::msg::StateAndFeedback>("waypoint_state", latched_qos);
   waypoints_sub_ = create_subscription<tsukutsuku2_msgs::msg::Waypoints>("/waypoints", 1, std::bind(&WayPointPublisher::WaypointsSubCallback, this, std::placeholders::_1));
   std::string action_server_name;
 
@@ -173,6 +174,9 @@ void WayPointPublisher::PublishWaypointMarkers(){
 
 void WayPointPublisher::SendWaypointsTimerCallback(){
   static int state = SEND_WAYPOINTS;
+  static uint8_t feedback_state = FEEDBACK_STANBY;
+  tsukutsuku2_msgs::msg::StateAndFeedback feedback_state_msg;
+  feedback_state_msg.state = latest_waypoint_state_;
 
   switch (state)
   {
@@ -180,12 +184,19 @@ void WayPointPublisher::SendWaypointsTimerCallback(){
     SendWaypointsOnce();
     PublishWaypointMarkers();
     state = SEND_WAYPOINTS_CHECK;
+    feedback_state = FEEDBACK_PROCCESSING; 
+    is_checked_ = false;
     break;
 
   case SEND_WAYPOINTS_CHECK:
-      if(is_goal_accepted_){
-        state = WAITING_GOAL;
-        RCLCPP_INFO(this->get_logger(), "Waiting to acheive goal.");
+      if(is_checked_){
+        if(is_goal_accepted_){
+          state = WAITING_GOAL;
+          RCLCPP_INFO(this->get_logger(), "Waiting to acheive goal.");
+        }else{
+          feedback_state = FEEDBACK_REJECTED;
+          state = STANBY;
+        }
       }
       
     break;
@@ -193,11 +204,13 @@ void WayPointPublisher::SendWaypointsTimerCallback(){
   case WAITING_GOAL:
     if(is_waypoints_updated_){
       state = CANCEL_GOAL;
+      feedback_state = FEEDBACK_CANCELING;
       break;
     }
     if(is_goal_achieved_){
       is_standby_ = false;
       state = STANBY;
+      feedback_state = FEEDBACK_STANBY;
       RCLCPP_INFO(this->get_logger(), 
                               "Goal is achived."
                               "Waypoint Publisher is now in standby mode."
@@ -208,6 +221,7 @@ void WayPointPublisher::SendWaypointsTimerCallback(){
       waypoints_.erase(waypoints_.begin());
       RCLCPP_WARN(this->get_logger(), "Skipping current waypoint. Restarting from the next waypoint...");
       state = SEND_WAYPOINTS;
+      feedback_state = FEEDBACK_ABORTED;
     }
     break;
   
@@ -216,8 +230,6 @@ void WayPointPublisher::SendWaypointsTimerCallback(){
       state = SEND_WAYPOINTS;
       break;
     }
-    RCLCPP_INFO(this->get_logger(), "Waypoint sending is Finisihed.");
-    timer_->cancel();
   break;
 
   case CANCEL_GOAL:
@@ -239,6 +251,8 @@ void WayPointPublisher::SendWaypointsTimerCallback(){
     timer_->cancel();
     break;
   }
+  feedback_state_msg.feed_back = feedback_state;
+  waypoint_state_pub_->publish(feedback_state_msg);
 }
 void WayPointPublisher::SendWaypointsOnce(){
   size_t i;
@@ -290,11 +304,11 @@ void WayPointPublisher::NavThroughPosesResultCallback(const rclcpp_action::Clien
   }
 }
 void WayPointPublisher::NavThroughPosesGoalResponseCallback(std::shared_ptr<rclcpp_action::ClientGoalHandle<nav2_msgs::action::NavigateThroughPoses>> future){
+  is_checked_ = true;
   auto handle = future.get();
   if (!handle)
   {
     RCLCPP_ERROR(this->get_logger(), "Goal was rejected by server");
-    timer_->cancel();
     is_goal_accepted_ = false; 
     return ;
   }
@@ -306,5 +320,6 @@ void WayPointPublisher::NavThroughPosesFeedbackCallback(const GoalHandleNavigate
 }
 void WayPointPublisher::WaypointsSubCallback(const tsukutsuku2_msgs::msg::Waypoints::SharedPtr waypoints_msg){
   waypoints_ = waypoints_msg->waypoints;
+  latest_waypoint_state_ = waypoints_.back().state;
   is_waypoints_updated_ = true;
 }

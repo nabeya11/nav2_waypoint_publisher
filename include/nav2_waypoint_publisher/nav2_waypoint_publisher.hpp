@@ -14,6 +14,7 @@
 #include "nav2_msgs/action/follow_waypoints.hpp"
 #include "nav2_msgs/action/navigate_to_pose.hpp"
 #include "tsukutsuku2_msgs/msg/waypoints.hpp"
+#include "tsukutsuku2_msgs/msg/state_and_feedback.hpp"
 
 #include <visualization_msgs/msg/marker.hpp>
 #include <visualization_msgs/msg/marker_array.hpp>
@@ -30,6 +31,13 @@
 #define STANBY 3
 #define CANCEL_GOAL 4
 #define WAITING_CANCEL 5
+
+//feedback系の状態量
+#define FEEDBACK_STANBY 0
+#define FEEDBACK_PROCCESSING 1
+#define FEEDBACK_ABORTED 2
+#define FEEDBACK_REJECTED 3
+#define FEEDBACK_CANCELING 4
 
 //ロボット全体の状態量
 #define STOP 0
@@ -64,6 +72,7 @@ private:
 private:
   rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr waypoint_marker_pub_;
   rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr waypoint_text_pub_;
+  rclcpp::Publisher<tsukutsuku2_msgs::msg::StateAndFeedback>::SharedPtr waypoint_state_pub_;
   rclcpp::Subscription<tsukutsuku2_msgs::msg::Waypoints>::SharedPtr waypoints_sub_;
   rclcpp::TimerBase::SharedPtr timer_;
   // rclcpp::Clock ros_clock(RCL_ROS_TIME);
@@ -74,9 +83,11 @@ private:
   std::shared_future<std::shared_ptr<rclcpp_action::ClientGoalHandle<nav2_msgs::action::NavigateThroughPoses>>> future_goal_handle_;
 
   std::vector<tsukutsuku2_msgs::msg::Waypoint> waypoints_;
+  uint8_t latest_waypoint_state_ ;
 
   bool is_action_server_ready_;
   bool is_goal_achieved_;
+  bool is_checked_;
   bool is_aborted_;
   bool is_standby_;
   bool is_goal_accepted_;
