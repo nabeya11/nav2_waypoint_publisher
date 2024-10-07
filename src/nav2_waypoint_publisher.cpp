@@ -195,7 +195,7 @@ void WayPointPublisher::SendWaypointsTimerCallback(){
           RCLCPP_INFO(this->get_logger(), "Waiting to acheive goal.");
         }else{
           feedback_state = FEEDBACK_REJECTED;
-          state = STANBY;
+          state = FEEDBACK_WAITING_GOAL;
         }
       }
       
