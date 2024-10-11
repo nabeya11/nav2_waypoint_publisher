@@ -189,15 +189,15 @@ void WayPointPublisher::SendWaypointsTimerCallback(){
     break;
 
   case SEND_WAYPOINTS_CHECK:
-      if(is_checked_){
-        if(is_goal_accepted_){
-          state = WAITING_GOAL;
-          RCLCPP_INFO(this->get_logger(), "Waiting to acheive goal.");
-        }else{
-          feedback_state = FEEDBACK_REJECTED;
-          state = FEEDBACK_WAITING_GOAL;
-        }
+    if(is_checked_){
+      if(is_goal_accepted_){
+        state = WAITING_GOAL;
+        RCLCPP_INFO(this->get_logger(), "Waiting to acheive goal.");
+      }else{
+        feedback_state = FEEDBACK_REJECTED;
+        state = FEEDBACK_WAITING_GOAL;
       }
+    }
       
     break;
 
